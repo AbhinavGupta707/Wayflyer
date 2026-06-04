@@ -41,7 +41,13 @@ def health():
 
 @app.get("/api/ledger")
 def ledger():
-    return LEDGER
+    # WS2: recompute live from the data (memoised). Falls back to the fixture
+    # if the data dir isn't available in this environment.
+    try:
+        from .engine.backtest import live_summary
+        return live_summary()
+    except Exception:
+        return LEDGER
 
 
 @app.get("/api/catalog")
