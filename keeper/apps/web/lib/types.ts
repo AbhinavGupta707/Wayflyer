@@ -166,11 +166,15 @@ export interface OrderItem {
   return_reason: string | null;
   runs: "small" | "large" | "none";
 }
+export type OrderStatus = "Processing" | "Shipped" | "Delivered" | "Returns" | "Cancelled";
 export interface CustomerOrder {
   order_id: string;
   order_number: string;
   created_at: string;
   total_price: number;
+  item_count: number;
+  status: OrderStatus;
+  status_line: string;
   items: OrderItem[];
 }
 export interface CustomerOrders {
@@ -181,5 +185,6 @@ export interface CustomerOrders {
   orders_count: number;
   country: string;
   segment: string;
+  address: string;
   orders: CustomerOrder[];
 }

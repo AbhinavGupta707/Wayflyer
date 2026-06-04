@@ -46,6 +46,22 @@ body {
   .text-balance {
     text-wrap: balance;
   }
+  /* Warm organic gradient for the LUXORA-style storefront. */
+  .lux-bg {
+    background:
+      radial-gradient(55% 45% at 72% 16%, rgba(245, 227, 212, 0.85), transparent 70%),
+      radial-gradient(45% 45% at 16% 26%, rgba(226, 235, 233, 0.6), transparent 70%),
+      radial-gradient(75% 55% at 50% 112%, rgba(231, 218, 199, 0.95), transparent 70%),
+      #faf8f4;
+  }
+  .lux-drift {
+    position: absolute;
+    width: 65vw; height: 65vw; right: -12vw; top: -14vw;
+    background: radial-gradient(circle at 50% 50%, rgba(243, 224, 208, 0.55), transparent 70%);
+    filter: blur(40px); border-radius: 50%;
+    animation: drift 26s ease-in-out infinite alternate;
+  }
+
   /* Animated aurora gradient for the cinematic landing. */
   .aurora {
     position: absolute;
@@ -65,4 +81,9 @@ body {
   0%   { transform: translate3d(0, 0, 0) scale(1); }
   50%  { transform: translate3d(2%, -1.5%, 0) scale(1.08); }
   100% { transform: translate3d(-2%, 1.5%, 0) scale(1.05); }
+}
+
+@keyframes drift {
+  0%   { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(-4vw, 3vw) scale(1.08); }
 }

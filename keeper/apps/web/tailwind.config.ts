@@ -26,9 +26,19 @@ const config: Config = {
           400: "#fbbf24",
           500: "#f59e0b",
         },
+        // LUXORA-style warm neutral theme for the storefront.
+        cream: {
+          50: "#faf8f4",
+          100: "#f4efe8",
+          200: "#eae3d9",
+          300: "#ddd3c5",
+          400: "#c9bba6",
+        },
+        char: "#1c1917",       // near-black headings / dark button
       },
       fontFamily: {
         sans: ["var(--font-sans)", "ui-sans-serif", "system-ui", "sans-serif"],
+        serif: ["var(--font-serif)", "Georgia", "Cambria", "serif"],
         mono: ["ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
       },
       keyframes: {
