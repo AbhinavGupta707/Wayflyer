@@ -82,6 +82,66 @@ def customer_orders(customer_id: str):
         return {}
 
 
+_GALAXY: dict | None = None
+
+
+@app.get("/api/passports/galaxy")
+def passports_galaxy():
+    """Compact projection of ALL 22k customer passports for the constellation view.
+
+    Short keys keep the payload light (~2MB): i=id, n=name, c=country, s=segment,
+    l=ltv, o=orders, k=#sizes kept, r=#sizes returned.
+    """
+    global _GALAXY
+    if _GALAXY is not None:
+        return _GALAXY
+    try:
+        data = _read(CACHE_DIR / "passports.json", {})
+        pts = []
+        n_contactable = n_repeat = n_returners = 0
+        ltv_sum = 0.0
+        seg_counts: dict[str, int] = {}
+        for cid, p in data.items():
+            kept = p.get("sizes_kept") or {}
+            kept_n = sum(len(v) for v in kept.values()) if isinstance(kept, dict) else 0
+            ret = p.get("sizes_returned") or []
+            ret_n = len(ret) if isinstance(ret, list) else 0
+            ltv = float(p.get("ltv") or 0.0)
+            orders = int(p.get("orders_count") or 0)
+            seg = p.get("segment") or "—"
+            ltv_sum += ltv
+            if p.get("contactable"):
+                n_contactable += 1
+            if orders > 1:
+                n_repeat += 1
+            if ret_n > 0:
+                n_returners += 1
+            seg_counts[seg] = seg_counts.get(seg, 0) + 1
+            pts.append({
+                "i": cid, "n": p.get("name") or "Customer", "c": p.get("country") or "",
+                "s": seg, "l": round(ltv), "o": orders, "k": kept_n, "r": ret_n,
+            })
+        total = len(pts) or 1
+        _GALAXY = {
+            "total": len(pts),
+            "stats": {
+                "contactable": n_contactable,
+                "contactable_pct": round(n_contactable / total * 100, 1),
+                "repeat": n_repeat,
+                "repeat_pct": round(n_repeat / total * 100, 1),
+                "returners": n_returners,
+                "returners_pct": round(n_returners / total * 100, 1),
+                "avg_ltv": round(ltv_sum / total, 2),
+                "segments": seg_counts,
+            },
+            "points": pts,
+        }
+        return _GALAXY
+    except Exception:
+        logging.getLogger(__name__).exception("galaxy build failed")
+        return {"total": 0, "stats": {}, "points": []}
+
+
 @app.get("/api/rescue/{rescue_id}")
 def rescue(rescue_id: str):
     from .intake import get_case

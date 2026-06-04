@@ -19,6 +19,7 @@ import { AgentConsole } from "./agent-console";
 import { AgentDecisionCard } from "./agent-decision-card";
 import { AgentStepCard } from "./agent-step-card";
 import { AgentSwarmGraph } from "./agent-swarm-graph";
+import { CustomerGalaxy } from "./customer-galaxy";
 import { useAgentStream } from "./agent-replay";
 import { cn } from "./agent-cn";
 
@@ -35,6 +36,7 @@ export function AgentView({
 }) {
   const { state, playAll, begin, reset } = useAgentStream();
   const [source, setSource] = useState<"replay" | "live">("replay");
+  const [galaxyOpen, setGalaxyOpen] = useState(false);
   const unsubRef = useRef<(() => void) | null>(null);
 
   // A real rescue (built from a customer's pick) auto-runs LIVE; the bare /agent
@@ -112,6 +114,16 @@ export function AgentView({
         </div>
 
         <div className="flex items-center gap-2.5">
+          {/* customer-memory galaxy */}
+          <button
+            type="button"
+            onClick={() => setGalaxyOpen(true)}
+            title="View all 22,440 customer passports"
+            className="flex items-center gap-1.5 rounded-lg border border-amber-400/25 bg-amber-400/5 px-3 py-1.5 text-[11px] font-medium text-amber-200/90 transition-colors hover:bg-amber-400/10"
+          >
+            <span className="text-amber-300">✦</span> Customer passports
+          </button>
+
           {/* status pill */}
           <span
             className={cn(
@@ -235,6 +247,15 @@ export function AgentView({
       <footer className="relative z-10 h-[150px] shrink-0 px-4 pb-3">
         <AgentConsole lines={state.console} />
       </footer>
+
+      <AnimatePresence>
+        {galaxyOpen && (
+          <CustomerGalaxy
+            onClose={() => setGalaxyOpen(false)}
+            highlightId={rcase?.passport.customer_id}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
