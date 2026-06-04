@@ -11,7 +11,7 @@
  * Requires the agent to declare a client tool named `confirm_return` (param
  * `accepted`: boolean) in the ElevenLabs dashboard → Tools.
  */
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { API_BASE } from "@/lib/api";
 
@@ -28,6 +28,19 @@ export function VoiceModal({
   const [hint, setHint] = useState("Connecting your concierge…");
   const convRef = useRef<any>(null);
   const resolved = useRef(false);
+  const finished = useRef(false);
+  const resultRef = useRef({ accepted: false, confirmation: "", note: "" });
+  const onResolvedRef = useRef(onResolved);
+  onResolvedRef.current = onResolved;
+
+  // Idempotent: called by the agent's end_call (onDisconnect) OR a fallback timer.
+  const doFinish = useCallback(() => {
+    if (finished.current) return;
+    finished.current = true;
+    convRef.current?.endSession?.().catch(() => {});
+    const r = resultRef.current;
+    onResolvedRef.current(r.accepted, r.confirmation, r.note);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -72,15 +85,19 @@ export function VoiceModal({
               } catch {
                 /* ignore */
               }
-              // Let the agent speak its confirmation line, then close + advance.
-              setTimeout(() => {
-                convRef.current?.endSession?.().catch(() => {});
-                onResolved(acc, confirmation, note);
-              }, 4200);
+              resultRef.current = { accepted: acc, confirmation, note };
+              // The agent should end the call itself after confirming (onDisconnect
+              // fires doFinish). This timer is only a fallback if it doesn't.
+              setTimeout(doFinish, 6000);
               return acc ? "Exchange confirmed for the customer." : "Refund confirmed.";
             },
           },
           onConnect: () => { if (!cancelled) { setMode("listening"); setHint("Listening…"); } },
+          onDisconnect: () => {
+            if (cancelled) return;
+            if (resolved.current) doFinish();   // agent ended the call after confirming
+            else onClose();                      // ended/hung up without a resolution
+          },
           onModeChange: ({ mode: m }: { mode: string }) => {
             if (cancelled || resolved.current) return;
             const speaking = m === "speaking";

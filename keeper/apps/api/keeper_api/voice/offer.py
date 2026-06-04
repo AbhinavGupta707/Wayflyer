@@ -109,8 +109,8 @@ def build_offer(rescue_id: str, offer_text: Optional[str] = None) -> VoiceOffer:
         # 3: deterministic fallback that narrates the decided action.
         if recommended == "exchange" and to_size:
             script_body = (
-                f"Your {product} runs small, so I'll swap your {from_size} for a "
-                f"{to_size} — same price, free returns. Sound good?"
+                f"Your {product} runs small, so I'll send you the {to_size} today at the "
+                f"same price, with a prepaid return label for the {from_size}. Sound good?"
             )
         else:
             script_body = f"I can get the refund on your {product} moving right away. Shall I go ahead?"
