@@ -33,6 +33,7 @@ QUALITY_REASONS = {"quality_issue", "damaged_in_transit", "not_as_described"}
 SWAP_COST_GBP = 5.0   # ship swap + process return (logistics drag on an exchange)
 ACCEPT_RATE = 0.55    # assumed exchange-acceptance rate for the 'realistic' figure
 AUTO_APPROVE_CEILING_GBP = 150.0  # above this -> human approval (governor)
+RE_RETURN_HAIRCUT = 0.5  # a corrective up-size halves a SKU's residual return propensity
 
 
 def sibling_size(product_type: str, size: str, reason: str) -> Optional[str]:
@@ -103,4 +104,29 @@ def decide(
         "fit_exchange", "exchange", alt, True, recovered, margin,
         f"runs {runs}; swap {size}->{alt}, keep the sale",
         requires_approval=recovered > AUTO_APPROVE_CEILING_GBP,
+    )
+
+
+def live_decide(rescue_case: dict, margin_floor: float = 0.0) -> Decision:
+    """Contract-A RescueCase -> Decision, using LIVE sibling stock.
+
+    This is the entry point the agent loop (WS3) calls. Same logic as the
+    backtest's `decide()`, so the live demo and the proof number can't diverge.
+    `recovered` is the actual cash refunded (already realised / discount-adjusted).
+    """
+    ret = rescue_case["returned"]
+    genome = rescue_case.get("genome", {}) or {}
+    product_type = genome.get("product_type", "")
+    stock_by_size = {s["size"]: int(s.get("stock", 0))
+                     for s in rescue_case.get("siblings_in_stock", [])}
+    refund_value = (rescue_case.get("economics", {}) or {}).get(
+        "refund_value", ret.get("price", 0.0))
+    return decide(
+        reason=rescue_case["reason_label"],
+        product_type=product_type,
+        size=ret["size"],
+        refund_amount=refund_value,
+        landed_cost=ret.get("landed_cost", 0.0),
+        alt_in_stock_fn=lambda sz: stock_by_size.get(sz, 0),
+        margin_floor=margin_floor,
     )

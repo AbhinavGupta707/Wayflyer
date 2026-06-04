@@ -5,9 +5,12 @@
   "addressable_count": 1382,
   "addressable_recovered_gbp": 182951.07,
   "addressable_margin_gbp": 108000.95,
+  "conservative_margin_gbp": 99557.66,
   "accept_rate_assumed": 0.55,
   "realistic_recovered_gbp": 100623.09,
   "realistic_margin_gbp": 59400.52,
+  "lost_to_stockout_count": 492,
+  "lost_to_stockout_gbp": 67166.56,
   "top_skus": [
     {
       "sku": "Court Trainer",
@@ -70,6 +73,44 @@
       "margin_gbp": 2005.02
     }
   ],
+  "by_reason": {
+    "size_too_large": {
+      "count": 1109,
+      "refund_gbp": 140896.74,
+      "recoverable": 621,
+      "recovered_gbp": 82979.21
+    },
+    "quality_issue": {
+      "count": 729,
+      "refund_gbp": 61367.57,
+      "recoverable": 0,
+      "recovered_gbp": 0.0
+    },
+    "damaged_in_transit": {
+      "count": 752,
+      "refund_gbp": 65020.95,
+      "recoverable": 0,
+      "recovered_gbp": 0.0
+    },
+    "size_too_small": {
+      "count": 1284,
+      "refund_gbp": 164795.45,
+      "recoverable": 761,
+      "recovered_gbp": 99971.86
+    },
+    "not_as_described": {
+      "count": 758,
+      "refund_gbp": 64202.73,
+      "recoverable": 0,
+      "recovered_gbp": 0.0
+    },
+    "changed_mind": {
+      "count": 1211,
+      "refund_gbp": 106105.73,
+      "recoverable": 0,
+      "recovered_gbp": 0.0
+    }
+  },
   "by_month": {
     "2024-06": 5797.5,
     "2024-07": 4669.5,
