@@ -87,3 +87,33 @@ body {
   0%   { transform: translate(0, 0) scale(1); }
   100% { transform: translate(-4vw, 3vw) scale(1.08); }
 }
+
+/* ElevenLabs-style voice orb — iridescent swirling sphere. */
+@layer utilities {
+  .vorb {
+    position: relative;
+    border-radius: 9999px;
+    background: conic-gradient(from 0deg, #60a5fa, #818cf8, #22d3ee, #a78bfa, #60a5fa);
+    box-shadow: 0 0 36px rgba(96, 165, 250, 0.45), inset 0 0 24px rgba(255, 255, 255, 0.5);
+    animation: vorb-spin 8s linear infinite;
+  }
+  .vorb::after {
+    content: "";
+    position: absolute; inset: 0; border-radius: inherit;
+    background: radial-gradient(circle at 36% 30%, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0) 55%);
+  }
+  .vorb--speaking {
+    animation-duration: 2.6s;
+    box-shadow: 0 0 70px rgba(96, 165, 250, 0.9), inset 0 0 24px rgba(255, 255, 255, 0.65);
+  }
+  .vorb-ring {
+    position: absolute; inset: -14px; border-radius: 9999px;
+    border: 2px solid rgba(96, 165, 250, 0.4);
+    animation: vorb-ping 2.2s cubic-bezier(0, 0, 0.2, 1) infinite;
+  }
+}
+@keyframes vorb-spin { to { transform: rotate(1turn); } }
+@keyframes vorb-ping {
+  0%   { transform: scale(0.92); opacity: 0.7; }
+  100% { transform: scale(1.45); opacity: 0; }
+}

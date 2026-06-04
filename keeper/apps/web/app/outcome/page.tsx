@@ -134,12 +134,9 @@ export default function OutcomePage() {
             <button
               onClick={() => setVoiceOpen(true)}
               aria-label="Speak to the concierge"
-              className="group grid h-14 w-14 place-items-center rounded-full border border-cream-300 bg-white shadow-sm transition hover:scale-105 hover:border-mint-400"
+              className="group grid h-16 w-16 place-items-center rounded-full transition hover:scale-110"
             >
-              <svg className="h-6 w-6 text-stone-600 transition group-hover:text-mint-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-                <path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
-                <path d="M19 11a7 7 0 0 1-14 0M12 18v4M8 22h8" strokeLinecap="round" />
-              </svg>
+              <div className="vorb h-12 w-12" />
             </button>
             <span className="text-xs text-stone-400">Prefer to talk it through?</span>
           </div>
