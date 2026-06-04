@@ -59,12 +59,16 @@ export function VoiceModal({
           return;
         }
         const { Conversation } = await import("@elevenlabs/client");
-        await navigator.mediaDevices.getUserMedia({ audio: true });
+
+        // A public agent connects by agentId over WebRTC (low latency). A signed
+        // URL (private agents) only supports websocket — the SDK THROWS if you pass
+        // both signedUrl + connectionType "webrtc", so pick exactly one.
+        const conn: Record<string, unknown> = data.agent_id
+          ? { agentId: data.agent_id, connectionType: "webrtc" }
+          : { signedUrl: data.signed_url, connectionType: "websocket" };
 
         const conv = await Conversation.startSession({
-          agentId: data.agent_id,
-          ...(data.signed_url ? { signedUrl: data.signed_url } : {}),
-          connectionType: "webrtc",
+          ...conn,
           dynamicVariables: data.dynamic_variables || {},
           clientTools: {
             confirm_return: async ({ accepted }: { accepted: boolean | string }) => {
@@ -107,8 +111,19 @@ export function VoiceModal({
           onError: () => { if (!cancelled) { setMode("error"); setHint("Voice error — tap to close."); } },
         });
         convRef.current = conv;
-      } catch {
-        if (!cancelled) { setMode("error"); setHint("Couldn't start — allow microphone access."); }
+      } catch (e: unknown) {
+        if (!cancelled) {
+          // Surface the REAL error instead of always blaming the mic.
+          // eslint-disable-next-line no-console
+          console.error("[VoiceModal] start failed:", e);
+          const err = e as { name?: string; message?: string };
+          setMode("error");
+          setHint(
+            err?.name === "NotAllowedError" || err?.name === "NotFoundError"
+              ? "Allow microphone access, then reopen."
+              : `Couldn't start the concierge. ${err?.message ?? ""}`.trim(),
+          );
+        }
       }
     })();
     return () => {
