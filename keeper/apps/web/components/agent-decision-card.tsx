@@ -141,9 +141,17 @@ export function AgentDecisionCard({
         </div>
       </div>
 
+      {/* margin breakdown — make the £ self-explanatory */}
+      {isExchange && d.margin_gbp > 0 && (
+        <div className="mt-2 text-center font-mono text-[11px] text-white/45">
+          {gbpPence(d.recovered_gbp)} sale − {gbpPence(Math.max(0, d.recovered_gbp - d.margin_gbp - 5))} cost − {gbpPence(5)} swap ={" "}
+          <span className="font-semibold text-mint-400">{gbpPence(d.margin_gbp)} kept</span>
+        </div>
+      )}
+
       {/* swing callout */}
       <div className="mt-3 flex items-center justify-center gap-2 rounded-lg bg-white/[0.03] py-2 text-[12px]">
-        <span className="text-white/45">Net swing from this one decision</span>
+        <span className="text-white/45">Better than refunding by</span>
         <span className="font-mono font-semibold text-mint-400">
           {gbpPence(d.margin_gbp + d.recovered_gbp)}
         </span>

@@ -63,14 +63,14 @@ function initialState(): StreamState {
   };
 }
 
-// Timing knobs — snappy enough to feel live, slow enough to read.
-const PER_CHAR_REASONING = 16; // ms/char while a reasoning agent streams
-const PER_CHAR_COMPUTE = 5; // ms/char — compute steps flash
-const SPINNER_REASONING = 320; // ms of spinner before tokens start
-const SPINNER_COMPUTE = 200;
-const SETTLE_REASONING = 220; // ms pause after result before next step
-const SETTLE_COMPUTE = 130;
-const DECISION_SUSPENSE = 520;
+// Timing knobs — paced for a presenter to narrate each step out loud.
+const PER_CHAR_REASONING = 26; // ms/char while a reasoning agent streams
+const PER_CHAR_COMPUTE = 8; // ms/char — compute steps flash
+const SPINNER_REASONING = 560; // ms of spinner before tokens start
+const SPINNER_COMPUTE = 340;
+const SETTLE_REASONING = 680; // ms pause after result before next step (room to talk)
+const SETTLE_COMPUTE = 380;
+const DECISION_SUSPENSE = 850;
 
 function isDecision(ev: StreamEvent): ev is DecisionEvent {
   return ev.kind === "decision";
