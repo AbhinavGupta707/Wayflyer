@@ -145,6 +145,18 @@ export function useAgentStream(): AgentStream {
       const step = ev as StepEvent;
       const eid = edgeId(step.node_edge ?? null);
       const target = step.node_edge?.[1] ?? step.agent;
+      const source = step.node_edge?.[0] ?? null;
+
+      // For the very first step, glow the upstream node (Intake) on its own first,
+      // so the pipeline visibly "starts" at intake before Triage fires.
+      if (source && s.steps.length === 0) {
+        s.activeNode = source;
+        s.status = "playing";
+        commit();
+        await sleep(700);
+        if (myRun !== runRef.current) return;
+        if (!s.visited.includes(source)) s.visited = [...s.visited, source];
+      }
 
       // 1) card appears, edge fires, console line opens
       const render: RenderStep = {
@@ -165,9 +177,7 @@ export function useAgentStream(): AgentStream {
         ...s.console,
         { id: lineId, agent: step.agent, kind: step.kind, text: "", done: false },
       ];
-      // The upstream node of this edge (e.g. "intake") is already complete the
-      // moment its edge fires — mark it visited so it lights up too.
-      const source = step.node_edge?.[0] ?? null;
+      // Keep the upstream node lit as the edge fires.
       if (source && !s.visited.includes(source)) s.visited = [...s.visited, source];
       s.activeEdge = eid;
       s.activeNode = target;
