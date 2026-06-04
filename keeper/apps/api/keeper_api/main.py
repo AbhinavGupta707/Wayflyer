@@ -62,25 +62,67 @@ def catalog():
 
 @app.get("/api/rescue/{rescue_id}")
 def rescue(rescue_id: str):
-    return RESCUE
+    from .intake import get_case
+    return get_case(rescue_id) or RESCUE
 
 
 @app.post("/api/returns/intake")
 def intake(body: dict):
+    """Build a REAL rescue case for the picked item (any product+size+reason).
+
+    Falls back to the demo fixture only if no selection is supplied or the build
+    fails, so the canned demo still works.
+    """
+    pid = (body.get("product_id") or "").strip()
+    size = (body.get("size") or "").strip()
+    reason = (body.get("reason") or body.get("reason_label") or "").strip()
+    if pid and size and reason:
+        try:
+            from .intake import build_rescue_case
+            case = build_rescue_case(
+                pid, size, reason,
+                customer_id=body.get("customer_id") or None,
+                colour=body.get("colour") or None,
+            )
+            return {"rescue_id": case["rescue_id"]}
+        except Exception:
+            logging.getLogger(__name__).exception("intake build failed; using demo fixture")
     return {"rescue_id": RESCUE.get("rescue_id", "rsc_demo_0001")}
 
 
 @app.post("/api/rescue/{rescue_id}/respond")
 def respond(rescue_id: str, body: dict):
     accepted = bool(body.get("accepted"))
-    if accepted:
-        return {
-            "actions": [a for e in STREAM if e.get("kind") == "decision"
-                        for a in e.get("actions_preview", [])],
-            "confirmation": "Exchange created — UK8 ships today, prepaid label sent for the UK7s. "
-                            "Refund cancelled. Size guidance updated.",
-        }
-    return {"actions": [], "confirmation": "Refund processed."}
+    if not accepted:
+        return {"actions": [], "confirmation": "Refund processed."}
+
+    from .intake import get_case
+    case = get_case(rescue_id)
+    if case:
+        econ = case.get("economics", {})
+        ex = econ.get("exchange")
+        if econ.get("recommended") == "exchange" and ex:
+            return {
+                "actions": [
+                    {"action_type": "create_exchange", "rescue_id": rescue_id,
+                     "payload": {"to_size": ex["to_size"]}, "expected_margin_impact": ex["margin_gbp"],
+                     "requires_approval": ex["recovered_gbp"] > 150, "status": "queued", "real": False},
+                    {"action_type": "reserve_inventory", "rescue_id": rescue_id,
+                     "payload": {"variant": ex["to_variant"]}, "expected_margin_impact": 0,
+                     "status": "queued", "real": False},
+                ],
+                "confirmation": f"Exchange created — {ex['to_size']} ships today, prepaid label sent. "
+                                f"Refund cancelled. £{ex['margin_gbp']:.2f} margin kept.",
+            }
+        return {"actions": [], "confirmation": "Refund processed — supplier QC flagged for the buying team."}
+
+    # demo-fixture fallback
+    return {
+        "actions": [a for e in STREAM if e.get("kind") == "decision"
+                    for a in e.get("actions_preview", [])],
+        "confirmation": "Exchange created — UK8 ships today, prepaid label sent for the UK7s. "
+                        "Refund cancelled. Size guidance updated.",
+    }
 
 
 # --- WS6 voice routes (ElevenLabs widget + Twilio call). Defensive: never block

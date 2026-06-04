@@ -28,9 +28,14 @@ def _fixture() -> dict:
 def load_rescue(rescue_id: str) -> dict:
     """Return a RescueCase dict (Contract A) for `rescue_id`.
 
-    Only the demo case is fixtured today; unknown ids reuse the fixture's shape
-    with the requested id so the loop never hard-fails during the hackathon.
+    Real cases built by the intake endpoint (any product+size+reason) are served
+    from the in-process store; the committed fixture backs the canned demo and any
+    unknown id, so the loop never hard-fails.
     """
+    from ..intake import get_case
+    built = get_case(rescue_id)
+    if built:
+        return built
     case = dict(_fixture())
     if not case:
         raise FileNotFoundError("fixtures/rescue_case.json missing — run WS1 ETL")
