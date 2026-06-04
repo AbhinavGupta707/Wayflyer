@@ -10,8 +10,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { subscribeStream } from "@/lib/api";
-import type { StreamEvent } from "@/lib/types";
+import { useQuery } from "@tanstack/react-query";
+import { subscribeStream, api, qk } from "@/lib/api";
+import type { RescueCase, StreamEvent } from "@/lib/types";
 import STEP_STREAM from "@/app/agent/step_stream.json";
 import { AgentBackdrop } from "./agent-fx";
 import { AgentConsole } from "./agent-console";
@@ -36,6 +37,15 @@ export function AgentView({
   const [source, setSource] = useState<"replay" | "live">("replay");
   const unsubRef = useRef<(() => void) | null>(null);
 
+  // A real rescue (built from a customer's pick) auto-runs LIVE; the bare /agent
+  // route falls back to the offline fixture replay.
+  const isReal = !!rescueId && rescueId !== DEFAULT_RESCUE_ID;
+  const { data: rcase } = useQuery<RescueCase>({
+    queryKey: qk.rescue(rescueId),
+    queryFn: () => api.rescue(rescueId),
+    enabled: isReal,
+  });
+
   const stopLive = useCallback(() => {
     unsubRef.current?.();
     unsubRef.current = null;
@@ -57,9 +67,10 @@ export function AgentView({
     });
   }, [begin, rescueId, stopLive]);
 
-  // Autoplay the fixture on first mount.
+  // On mount: go live for a real rescue, else replay the offline fixture.
   useEffect(() => {
-    playAll(FIXTURE);
+    if (isReal) goLive();
+    else playAll(FIXTURE);
     return () => {
       stopLive();
       reset();
@@ -89,7 +100,9 @@ export function AgentView({
               Keeper · Agent Reasoning
             </h1>
             <p className="font-mono text-[11px] text-white/40">
-              case {rescueId} · Court Trainer return · Blessing Nowak
+              {rcase
+                ? `${rcase.returned.title} ${rcase.returned.size} · ${rcase.passport.name}`
+                : isReal ? "loading case…" : "Court Trainer return · Blessing Nowak"}
             </p>
           </div>
         </div>

@@ -20,7 +20,7 @@ export default function AgentPage() {
       rescueId={activeRescueId ?? undefined}
       onReturnToCustomer={() => {
         returnToCustomer();
-        router.push("/store");
+        router.push("/outcome");
       }}
     />
   );

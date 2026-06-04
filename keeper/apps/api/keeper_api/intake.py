@@ -93,7 +93,8 @@ def build_rescue_case(
         "order_id": order_id or "ord_demo",
         "returned": {
             "variant_id": vid, "product_id": product_id, "title": g["title"],
-            "size": size, "price": refund_value, "landed_cost": landed,
+            "size": size, "colour": v.get("colour", ""),
+            "price": refund_value, "landed_cost": landed,
         },
         "reason_label": reason,
         "reason_text": REASON_TEXT.get(reason, "I'd like to return this."),
