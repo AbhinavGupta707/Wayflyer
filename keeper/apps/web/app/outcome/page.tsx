@@ -2,13 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { api, qk, API_BASE } from "@/lib/api";
 import { useScene } from "@/lib/scene";
 import { useSession } from "@/lib/session";
 import { ProductThumb } from "@/components/product-thumb";
-import { VoiceWidget } from "@/components/voice-widget";
+import { VoiceModal } from "@/components/voice-modal";
 import type { RescueCase } from "@/lib/types";
 
 export default function OutcomePage() {
@@ -22,6 +22,7 @@ export default function OutcomePage() {
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<string | null>(null);
   const [learning, setLearning] = useState<string | null>(null);
+  const [voiceOpen, setVoiceOpen] = useState(false);
 
   async function respond(accepted: boolean, msg: string) {
     if (!rescueId) return;
@@ -129,15 +130,35 @@ export default function OutcomePage() {
             only once ELEVENLABS_AGENT_ID is configured; otherwise shows a clean
             text transcript + Yes/No fallback. */}
         {rc && !done && (
-          <div className="mt-4 w-full">
-            <VoiceWidget
-              rescueId={rescueId!}
-              apiBase={API_BASE}
-              onAccepted={(r) => setDone(r.confirmation || "Your exchange is on its way.")}
-            />
+          <div className="mt-5 flex flex-col items-center gap-2">
+            <button
+              onClick={() => setVoiceOpen(true)}
+              aria-label="Speak to the concierge"
+              className="group grid h-14 w-14 place-items-center rounded-full border border-cream-300 bg-white shadow-sm transition hover:scale-105 hover:border-mint-400"
+            >
+              <svg className="h-6 w-6 text-stone-600 transition group-hover:text-mint-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+                <path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+                <path d="M19 11a7 7 0 0 1-14 0M12 18v4M8 22h8" strokeLinecap="round" />
+              </svg>
+            </button>
+            <span className="text-xs text-stone-400">Prefer to talk it through?</span>
           </div>
         )}
       </div>
+
+      <AnimatePresence>
+        {voiceOpen && rescueId && (
+          <VoiceModal
+            rescueId={rescueId}
+            onClose={() => setVoiceOpen(false)}
+            onResolved={(accepted, confirmation, note) => {
+              setLearning(note || null);
+              setDone(confirmation || (accepted ? "Your exchange is on its way." : "Your refund is on its way."));
+              setVoiceOpen(false);
+            }}
+          />
+        )}
+      </AnimatePresence>
     </main>
   );
 }
