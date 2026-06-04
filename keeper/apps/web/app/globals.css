@@ -46,4 +46,23 @@ body {
   .text-balance {
     text-wrap: balance;
   }
+  /* Animated aurora gradient for the cinematic landing. */
+  .aurora {
+    position: absolute;
+    inset: -25%;
+    z-index: 0;
+    background:
+      radial-gradient(40% 50% at 20% 30%, rgba(16, 185, 129, 0.20), transparent 60%),
+      radial-gradient(45% 45% at 80% 25%, rgba(56, 189, 248, 0.16), transparent 60%),
+      radial-gradient(50% 55% at 65% 80%, rgba(245, 158, 11, 0.12), transparent 60%),
+      radial-gradient(40% 40% at 28% 78%, rgba(99, 102, 241, 0.16), transparent 60%);
+    filter: blur(48px);
+    animation: aurora 20s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes aurora {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  50%  { transform: translate3d(2%, -1.5%, 0) scale(1.08); }
+  100% { transform: translate3d(-2%, 1.5%, 0) scale(1.05); }
 }

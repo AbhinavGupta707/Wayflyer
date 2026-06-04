@@ -60,6 +60,28 @@ def catalog():
     return list(GENOMES.values())
 
 
+@app.get("/api/customers")
+def customers():
+    """Curated real customers for the storefront switcher."""
+    try:
+        from .demo_customers import list_customers
+        return list_customers()
+    except Exception:
+        logging.getLogger(__name__).exception("customer list failed")
+        return []
+
+
+@app.get("/api/customers/{customer_id}/orders")
+def customer_orders(customer_id: str):
+    """A real customer's real order history (with what they actually returned)."""
+    try:
+        from .demo_customers import customer_orders as _co
+        return _co(customer_id) or {}
+    except Exception:
+        logging.getLogger(__name__).exception("customer orders failed")
+        return {}
+
+
 @app.get("/api/rescue/{rescue_id}")
 def rescue(rescue_id: str):
     from .intake import get_case
@@ -73,16 +95,19 @@ def intake(body: dict):
     Falls back to the demo fixture only if no selection is supplied or the build
     fails, so the canned demo still works.
     """
+    reason = (body.get("reason") or body.get("reason_label") or "").strip()
+    variant_id = (body.get("variant_id") or "").strip()
     pid = (body.get("product_id") or "").strip()
     size = (body.get("size") or "").strip()
-    reason = (body.get("reason") or body.get("reason_label") or "").strip()
-    if pid and size and reason:
+    if reason and (variant_id or (pid and size)):
         try:
             from .intake import build_rescue_case
             case = build_rescue_case(
-                pid, size, reason,
+                product_id=pid or None, size=size or None, reason=reason,
+                variant_id=variant_id or None,
                 customer_id=body.get("customer_id") or None,
                 colour=body.get("colour") or None,
+                order_id=body.get("order_id") or None,
             )
             return {"rescue_id": case["rescue_id"]}
         except Exception:
