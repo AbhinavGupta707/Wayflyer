@@ -44,7 +44,14 @@ def _first_name(full: str) -> str:
 
 
 def _load_rescue(rescue_id: str) -> dict:
-    """Prefer live API data (so we follow WS2/WS3 swaps); fall back to fixture."""
+    """Prefer the real built case for THIS rescue_id; fall back to fixture."""
+    try:
+        from ..intake import get_case  # the case the customer actually picked
+        c = get_case(rescue_id)
+        if c:
+            return c
+    except Exception:
+        pass
     try:
         from .. import main as _m  # late import — avoids circular import at boot
         if getattr(_m, "RESCUE", None):
@@ -93,8 +100,10 @@ def build_offer(rescue_id: str, offer_text: Optional[str] = None) -> VoiceOffer:
 
     greeting = f"Hi {first}, this is the Pretty Fly fit concierge."
 
-    # 1/2: caller-supplied or concierge-drafted prose wins (LLM owns the words).
-    script_body = offer_text or _concierge_message()
+    # 1: caller-supplied prose wins (e.g. the live concierge draft passed to /start).
+    #    (We don't reuse the fixture step-stream's concierge line — it's the demo
+    #     case, not this customer's item — so a real pick gets the grounded template.)
+    script_body = offer_text
 
     if not script_body:
         # 3: deterministic fallback that narrates the decided action.
