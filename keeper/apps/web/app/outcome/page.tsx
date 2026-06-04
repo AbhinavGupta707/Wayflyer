@@ -4,10 +4,11 @@ import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
-import { api, qk } from "@/lib/api";
+import { api, qk, API_BASE } from "@/lib/api";
 import { useScene } from "@/lib/scene";
 import { useSession } from "@/lib/session";
 import { ProductThumb } from "@/components/product-thumb";
+import { VoiceWidget } from "@/components/voice-widget";
 import type { RescueCase } from "@/lib/types";
 
 export default function OutcomePage() {
@@ -114,6 +115,19 @@ export default function OutcomePage() {
               </>
             )}
           </motion.div>
+        )}
+
+        {/* Prefer to talk? The fit concierge (ElevenLabs voice / phone). Appears
+            only once ELEVENLABS_AGENT_ID is configured; otherwise shows a clean
+            text transcript + Yes/No fallback. */}
+        {rc && !done && (
+          <div className="mt-4 w-full">
+            <VoiceWidget
+              rescueId={rescueId!}
+              apiBase={API_BASE}
+              onAccepted={(r) => setDone(r.confirmation || "Your exchange is on its way.")}
+            />
+          </div>
         )}
       </div>
     </main>
