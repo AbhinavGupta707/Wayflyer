@@ -53,6 +53,19 @@ export default function OrdersPage() {
     for (const o of orders) c[o.status] = (c[o.status] || 0) + 1;
     return c;
   }, [orders]);
+
+  // Recommendation from THIS customer's own return history (their fit memory).
+  const fitTip = useMemo(() => {
+    if (!data) return "";
+    let up = 0, down = 0;
+    for (const o of data.orders) for (const it of o.items) {
+      if (it.return_reason === "size_too_small") up++;
+      else if (it.return_reason === "size_too_large") down++;
+    }
+    if (up > down && up >= 1) return `You've returned ${up} item${up > 1 ? "s" : ""} as "too small" before — we'll lean toward sizing up.`;
+    if (down > up && down >= 1) return `You've returned ${down} item${down > 1 ? "s" : ""} as "too big" before — we'll lean toward sizing down.`;
+    return "";
+  }, [data]);
   const shown = tab === "All" ? orders : orders.filter((o) => o.status === tab);
   const first = data?.name.split(" ")[0] ?? "";
 
@@ -198,6 +211,12 @@ export default function OrdersPage() {
               className="w-full max-w-lg rounded-2xl border border-cream-200 bg-white p-6 text-char" onClick={(e) => e.stopPropagation()}>
               <h3 className="font-serif text-2xl">Return or replace</h3>
               <p className="text-sm text-stone-500">Order #{retOrder.order_number}</p>
+
+              {fitTip && (
+                <div className="mt-3 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  <span aria-hidden>🧠</span><span>{fitTip}</span>
+                </div>
+              )}
 
               <div className="mt-4 mb-2 text-xs font-medium uppercase tracking-wider text-stone-400">Which item?</div>
               <div className="space-y-2">

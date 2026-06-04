@@ -21,6 +21,7 @@ export default function OutcomePage() {
   });
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<string | null>(null);
+  const [learning, setLearning] = useState<string | null>(null);
 
   async function respond(accepted: boolean, msg: string) {
     if (!rescueId) return;
@@ -28,6 +29,7 @@ export default function OutcomePage() {
     try {
       const resp = await api.respond(rescueId, { accepted });
       record(resp);
+      setLearning(resp.learning_note || null);
       setDone(msg);
     } finally {
       setBusy(false);
@@ -65,6 +67,12 @@ export default function OutcomePage() {
             </motion.div>
             <h2 className="mt-5 font-serif text-3xl">All done</h2>
             <p className="mx-auto mt-2 max-w-sm text-stone-500">{done}</p>
+            {learning && (
+              <div className="mx-auto mt-4 flex max-w-sm items-start gap-2 rounded-xl border border-cream-200 bg-cream-50 px-4 py-3 text-left text-sm text-stone-600">
+                <span aria-hidden>🧠</span>
+                <span dangerouslySetInnerHTML={{ __html: learning.replace(/\*\*(.+?)\*\*/g, "<b>$1</b>") }} />
+              </div>
+            )}
             <div className="mt-7 flex justify-center gap-3">
               <Link href="/orders" className="rounded-xl bg-char px-6 py-3 font-medium text-white transition hover:bg-black">Back to my orders</Link>
               <Link href="/ops" className="rounded-xl border border-cream-300 bg-white px-6 py-3 font-medium text-stone-700 transition hover:bg-cream-50">Ops ledger</Link>

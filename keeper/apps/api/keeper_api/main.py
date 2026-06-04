@@ -133,11 +133,22 @@ def intake(body: dict):
 @app.post("/api/rescue/{rescue_id}/respond")
 def respond(rescue_id: str, body: dict):
     accepted = bool(body.get("accepted"))
-    if not accepted:
-        return {"actions": [], "confirmation": "Refund processed."}
-
     from .intake import get_case
     case = get_case(rescue_id)
+
+    # Live learning: every processed return teaches us (updates SKU + customer fit memory).
+    note = ""
+    if case:
+        try:
+            from .learning import record_return
+            action = (case.get("economics", {}) or {}).get("recommended", "refund") if accepted else "refund"
+            note = record_return(case, action, accepted)
+        except Exception:
+            logging.getLogger(__name__).exception("learning record failed")
+
+    if not accepted:
+        return {"actions": [], "confirmation": "Refund processed.", "learning_note": note}
+
     if case:
         econ = case.get("economics", {})
         ex = econ.get("exchange")
@@ -153,8 +164,10 @@ def respond(rescue_id: str, body: dict):
                 ],
                 "confirmation": f"Exchange created — {ex['to_size']} ships today, prepaid label sent. "
                                 f"Refund cancelled. £{ex['margin_gbp']:.2f} margin kept.",
+                "learning_note": note,
             }
-        return {"actions": [], "confirmation": "Refund processed — supplier QC flagged for the buying team."}
+        return {"actions": [], "confirmation": "Refund processed — supplier QC flagged for the buying team.",
+                "learning_note": note}
 
     # demo-fixture fallback
     return {
@@ -162,7 +175,18 @@ def respond(rescue_id: str, body: dict):
                     for a in e.get("actions_preview", [])],
         "confirmation": "Exchange created — UK8 ships today, prepaid label sent for the UK7s. "
                         "Refund cancelled. Size guidance updated.",
+        "learning_note": note,
     }
+
+
+@app.get("/api/learnings")
+def learnings():
+    """The live fit-memory accumulated from returns processed this session."""
+    try:
+        from .learning import all_learnings
+        return all_learnings()
+    except Exception:
+        return {"returns": [], "sku_fit": {}, "customer_fit": {}}
 
 
 # --- WS6 voice routes (ElevenLabs widget + Twilio call). Defensive: never block
