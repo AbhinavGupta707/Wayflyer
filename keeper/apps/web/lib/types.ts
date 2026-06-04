@@ -109,7 +109,7 @@ export type StreamEvent = StepEvent | DecisionEvent;
 export interface ReturnIntakeRequest { order_id: string; variant_id: string; reason_text?: string; channel?: "chat" | "voice"; }
 export interface RescueIdResponse { rescue_id: string; }
 export interface RespondRequest { accepted: boolean; }
-export interface RespondResponse { actions: ActionObject[]; confirmation: string; }
+export interface RespondResponse { actions: ActionObject[]; confirmation: string; learning_note?: string; }
 
 export interface TopSku {
   sku: string;
