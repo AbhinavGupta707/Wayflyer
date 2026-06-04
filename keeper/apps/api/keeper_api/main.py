@@ -72,6 +72,18 @@ def respond(rescue_id: str, body: dict):
     return {"actions": [], "confirmation": "Refund processed."}
 
 
+# --- WS6 voice routes (ElevenLabs widget + Twilio call). Defensive: never block
+#     API boot if telephony deps/keys are absent — the module degrades gracefully.
+try:
+    from .voice import router as voice_router
+
+    app.include_router(voice_router)
+except Exception as _voice_err:  # pragma: no cover
+    import logging
+
+    logging.getLogger(__name__).warning("voice routes not mounted: %s", _voice_err)
+
+
 @app.websocket("/api/rescue/{rescue_id}/stream")
 async def stream(ws: WebSocket, rescue_id: str):
     """Replays the recorded StepEvents with lifelike pacing (mock of the agent loop)."""

@@ -4,23 +4,83 @@ Builds, from the 21 CSVs, the cached feature stores every workstream reads:
   cache/passports.json       customer_id -> Passport
   cache/genomes.json         product_id  -> SkuGenome
   cache/stock_timeline.json  variant_id  -> [[date, running_balance], ...]
+  cache/variants.json        variant_id  -> {product_id, size, price, ...}  (accessor index)
 And one demo fixture grounded in real data:
   fixtures/rescue_case.json  a real recoverable Court Trainer size_too_small case
+
+Accessors over these stores live in `keeper_api/features.py`.
 
 Run:  cd keeper/apps/api && python -m keeper_api.etl.build
 """
 from __future__ import annotations
 import csv
+import importlib.util
 import json
+import os
 from collections import defaultdict, Counter
 
-from ..config import DATA_DIR, CACHE_DIR, FIXTURES_DIR
+from ..config import DATA_DIR, CACHE_DIR, FIXTURES_DIR, REPO_ROOT
 from ..engine.decision import LADDERS, sibling_size, SWAP_COST_GBP
 
 
 def _load(name: str) -> list[dict]:
     with open(DATA_DIR / name, encoding="utf-8") as f:
         return list(csv.DictReader(f))
+
+
+def _load_contracts():
+    """Import the frozen Pydantic models from packages/contracts/schemas.py.
+
+    Loaded by file path so the ETL has no hard dependency on the contracts package
+    layout. Returns None if pydantic isn't installed (stdlib-only runs skip validation).
+    """
+    try:
+        import pydantic  # noqa: F401
+    except ImportError:
+        return None
+    import sys
+    path = REPO_ROOT / "keeper" / "packages" / "contracts" / "schemas.py"
+    spec = importlib.util.spec_from_file_location("keeper_contracts_schemas", path)
+    mod = importlib.util.module_from_spec(spec)
+    # Register before exec so pydantic can resolve the models' forward references
+    # (schemas.py uses `from __future__ import annotations`).
+    sys.modules[spec.name] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _validate(passports: dict, genomes: dict) -> None:
+    """Validate every Passport / SkuGenome instance against Contract A.
+
+    Skipped (with a notice) when pydantic isn't available or KEEPER_SKIP_VALIDATE is set,
+    so the stdlib-only `python -m keeper_api.etl.build` still works. Raises on any failure.
+    """
+    if os.environ.get("KEEPER_SKIP_VALIDATE"):
+        print("validation: skipped (KEEPER_SKIP_VALIDATE set)")
+        return
+    contracts = _load_contracts()
+    if contracts is None:
+        print("validation: skipped (pydantic not installed)")
+        return
+    from pydantic import ValidationError
+
+    errors: list[str] = []
+    for cid, p in passports.items():
+        try:
+            contracts.Passport(**p)
+        except ValidationError as e:
+            errors.append(f"Passport {cid}: {e.errors()[:1]}")
+    for pid, g in genomes.items():
+        try:
+            contracts.SkuGenome(**g)
+        except ValidationError as e:
+            errors.append(f"SkuGenome {pid}: {e.errors()[:1]}")
+    if errors:
+        preview = "\n  ".join(errors[:10])
+        raise SystemExit(
+            f"validation FAILED: {len(errors)} Contract-A violation(s):\n  {preview}"
+        )
+    print(f"validation: OK ({len(passports)} passports, {len(genomes)} genomes vs Contract A)")
 
 
 def run() -> None:
@@ -144,12 +204,63 @@ def run() -> None:
     (CACHE_DIR / "genomes.json").write_text(json.dumps(genomes))
 
     # ---------- STOCK TIMELINE ----------
-    timeline = defaultdict(list)
+    # variant_id -> [[iso_ts, balance], ...] giving point-in-time stock.
+    #
+    # IMPORTANT: the source `running_balance` column is sequenced by movement_id, and
+    # movement_ids are assigned OUT of chronological order — so the recorded
+    # running_balance at a given date is NOT a valid as-of balance (verified: var_000053's
+    # last-by-date row reads -7, but the true current stock is 20). We therefore recompute
+    # the balance as the cumulative sum of quantity_delta in (date, movement_id) order.
+    # ISO timestamps sort lexicographically == chronologically, so features.stock_at() can
+    # bisect the date column for an O(log n) point-in-time lookup. The final cumulative
+    # equals variants.inventory_quantity (validate.py Rule 7), so stock_at(vid) with no
+    # timestamp returns current stock and reconciles with genome.current_stock_by_size.
+    moves_by_variant = defaultdict(list)
     for m in movements:
-        timeline[m["variant_id"]].append([m["date"], int(float(m["running_balance"]))])
-    for v in timeline:
-        timeline[v].sort()
+        moves_by_variant[m["variant_id"]].append(
+            (m["date"], m["movement_id"], int(float(m["quantity_delta"])))
+        )
+    timeline = {}
+    for vid, ms in moves_by_variant.items():
+        ms.sort(key=lambda x: (x[0], x[1]))
+        bal = 0
+        series = []
+        for dt, _mid, delta in ms:
+            bal += delta
+            series.append([dt, bal])
+        timeline[vid] = series
     (CACHE_DIR / "stock_timeline.json").write_text(json.dumps(timeline))
+
+    # Rule-7 self-check: each variant's final cumulative must equal inventory_quantity.
+    bad_stock = [vid for vid, q in v_qty.items()
+                 if (timeline[vid][-1][1] if vid in timeline else 0) != q]
+    if bad_stock:
+        raise SystemExit(
+            f"stock timeline failed Rule-7 reconciliation for {len(bad_stock)} "
+            f"variant(s), e.g. {bad_stock[:5]}"
+        )
+
+    # ---------- VARIANTS INDEX ----------
+    # Flat variant_id -> attributes index that features.py uses to resolve a variant to
+    # its product, size, price and landed cost (and to enumerate a product's siblings)
+    # without re-reading the CSVs at request time.
+    variant_index = {}
+    for v in variants:
+        vid = v["variant_id"]
+        pid = v_prod.get(vid, "")
+        variant_index[vid] = {
+            "variant_id": vid,
+            "product_id": pid,
+            "product_type": p_type.get(pid, ""),
+            "title": p_title.get(pid, ""),
+            "sku": v.get("sku", ""),
+            "size": v_size.get(vid, ""),
+            "colour": v.get("option2_value", ""),  # products have size x colour variants
+            "price": v_price.get(vid, 0.0),
+            "landed_cost": round(landed.get(vid, 0.0), 2),
+            "current_stock": v_qty.get(vid, 0),
+        }
+    (CACHE_DIR / "variants.json").write_text(json.dumps(variant_index))
 
     # ---------- DEMO FIXTURE: a real recoverable Court Trainer case ----------
     psv = defaultdict(dict)
@@ -205,8 +316,11 @@ def run() -> None:
     if fixture:
         (FIXTURES_DIR / "rescue_case.json").write_text(json.dumps(fixture, indent=2))
 
+    _validate(passports, genomes)
+
     print(f"passports: {len(passports)} | genomes: {len(genomes)} | "
-          f"stock timelines: {len(timeline)} | fixture: {'OK' if fixture else 'MISSING'}")
+          f"variants: {len(variant_index)} | stock timelines: {len(timeline)} | "
+          f"fixture: {'OK' if fixture else 'MISSING'}")
     if fixture:
         e = fixture["economics"]["exchange"]
         print(f"fixture: {fixture['returned']['title']} {fixture['returned']['size']}"
