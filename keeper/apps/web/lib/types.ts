@@ -117,6 +117,12 @@ export interface TopSku {
   recovered_gbp: number;
   margin_gbp: number;
 }
+export interface ReasonStat {
+  count: number;
+  refund_gbp: number;
+  recoverable: number;
+  recovered_gbp: number;
+}
 export interface LedgerSummary {
   total_refunds: number;
   size_refunds: number;
@@ -129,6 +135,11 @@ export interface LedgerSummary {
   realistic_margin_gbp: number;
   top_skus: TopSku[];
   by_month: Record<string, number>;
+  // WS2 additions (optional for backward-compat with the day-0 fixture):
+  conservative_margin_gbp?: number;
+  lost_to_stockout_count?: number;
+  lost_to_stockout_gbp?: number;
+  by_reason?: Record<string, ReasonStat>;
 }
 
 export interface HealthResponse { ok: boolean; fixtures: boolean; stream_steps: number; }
