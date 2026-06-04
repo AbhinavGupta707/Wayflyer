@@ -18,9 +18,9 @@ import os
 from typing import AsyncIterator, Optional
 
 MODELS = {
-    "triage": "accounts/fireworks/models/llama-v3p1-8b-instruct",
-    "structured": "accounts/fireworks/models/firefunction-v2",
-    "concierge": "accounts/fireworks/models/llama-v3p3-70b-instruct",
+    "triage": "accounts/fireworks/models/gpt-oss-120b",
+    "structured": "accounts/fireworks/models/gpt-oss-120b",
+    "concierge": "accounts/fireworks/models/deepseek-v4-pro",
 }
 
 # Temperatures kept low — this is a transactional CX agent, not a poet.
