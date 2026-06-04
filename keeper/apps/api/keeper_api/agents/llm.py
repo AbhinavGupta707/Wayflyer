@@ -30,6 +30,10 @@ _clients: dict[str, object] = {}
 
 
 def have_key() -> bool:
+    # Live LLM is OFF by default — the swarm uses deterministic templates (clean,
+    # fast, no token loops). Opt back in with KEEPER_LIVE_LLM=1 once desired.
+    if os.getenv("KEEPER_LIVE_LLM", "").lower() not in ("1", "true", "yes"):
+        return False
     return bool(os.getenv("FIREWORKS_API_KEY"))
 
 

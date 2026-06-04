@@ -55,6 +55,7 @@ export const api = {
   ledger: () => getJSON<LedgerSummary>("/api/ledger"),
   catalog: () => getJSON<SkuGenome[]>("/api/catalog"),
   rescue: (id: string) => getJSON<RescueCase>(`/api/rescue/${id}`),
+  steps: (id: string) => getJSON<StreamEvent[]>(`/api/rescue/${id}/steps`),
 
   customers: () => getJSON<DemoCustomer[]>("/api/customers"),
   customerOrders: (id: string) => getJSON<CustomerOrders>(`/api/customers/${id}/orders`),

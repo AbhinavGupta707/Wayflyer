@@ -54,8 +54,12 @@ export function AgentView({
   const replay = useCallback(() => {
     stopLive();
     setSource("replay");
-    playAll(FIXTURE);
-  }, [playAll, stopLive]);
+    if (isReal) {
+      api.steps(rescueId).then((s) => playAll(s as StreamEvent[])).catch(() => playAll(FIXTURE));
+    } else {
+      playAll(FIXTURE);
+    }
+  }, [isReal, rescueId, playAll, stopLive]);
 
   const goLive = useCallback(() => {
     stopLive();
@@ -67,10 +71,14 @@ export function AgentView({
     });
   }, [begin, rescueId, stopLive]);
 
-  // On mount: go live for a real rescue, else replay the offline fixture.
+  // On mount: replay the deterministic per-item stream for a real rescue (clean,
+  // one card per node), else the offline fixture.
   useEffect(() => {
-    if (isReal) goLive();
-    else playAll(FIXTURE);
+    if (isReal) {
+      api.steps(rescueId).then((s) => playAll(s as StreamEvent[])).catch(() => playAll(FIXTURE));
+    } else {
+      playAll(FIXTURE);
+    }
     return () => {
       stopLive();
       reset();
@@ -86,20 +94,16 @@ export function AgentView({
   const playing = state.status === "playing";
 
   return (
-    <div className="relative flex h-[100dvh] flex-col overflow-hidden bg-ink-900 text-white">
+    <div className="relative flex h-[100dvh] flex-col overflow-hidden bg-[#17130f] text-cream-50">
       <AgentBackdrop />
 
       {/* ---- header ---- */}
       <header className="relative z-10 flex items-center justify-between gap-4 border-b border-white/5 px-5 py-3">
         <div className="flex items-center gap-3">
-          <span className="grid h-9 w-9 place-items-center rounded-xl bg-mint-500/15 text-lg shadow-[inset_0_0_0_1px_rgba(16,185,129,0.3)]">
-            🧠
-          </span>
+          <span className="h-2.5 w-2.5 rounded-full bg-mint-400 shadow-[0_0_12px_rgba(52,211,153,0.6)]" />
           <div>
-            <h1 className="text-[15px] font-semibold leading-tight">
-              Keeper · Agent Reasoning
-            </h1>
-            <p className="font-mono text-[11px] text-white/40">
+            <h1 className="font-serif text-2xl leading-none tracking-wide text-cream-50">Keeper</h1>
+            <p className="mt-1 font-mono text-[11px] text-cream-200/45">
               {rcase
                 ? `${rcase.returned.title} ${rcase.returned.size} · ${rcase.passport.name}`
                 : isReal ? "loading case…" : "Court Trainer return · Blessing Nowak"}

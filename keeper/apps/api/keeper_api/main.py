@@ -88,6 +88,21 @@ def rescue(rescue_id: str):
     return get_case(rescue_id) or RESCUE
 
 
+@app.get("/api/rescue/{rescue_id}/steps")
+def rescue_steps(rescue_id: str):
+    """Deterministic, templated step-stream for the agent view (no LLM, no loops)."""
+    from .intake import get_case
+    case = get_case(rescue_id)
+    if not case:
+        return STREAM  # canned fixture demo
+    try:
+        from .steps import build_step_stream
+        return build_step_stream(case)
+    except Exception:
+        logging.getLogger(__name__).exception("step-stream build failed")
+        return STREAM
+
+
 @app.post("/api/returns/intake")
 def intake(body: dict):
     """Build a REAL rescue case for the picked item (any product+size+reason).
