@@ -43,7 +43,7 @@ export interface Economics {
   exchange?: ExchangeOption | null;
 }
 export interface ReturnedItem {
-  variant_id: string; product_id: string; title: string; size: string; price: number; landed_cost: number;
+  variant_id: string; product_id: string; title: string; size: string; colour?: string; price: number; landed_cost: number;
 }
 export interface RescueCase {
   rescue_id: string;
