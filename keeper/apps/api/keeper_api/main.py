@@ -1,21 +1,26 @@
-"""Keeper mock API (Contract B + C).
+"""Keeper API (Contract B + C) — integrated.
 
-Serves the real ledger + fixtures so all UI/voice workstreams can build against
-a LIVE server on day 0. WS3 later swaps the mock stream for the real agent loop;
-WS2 swaps the ledger for live recompute — same endpoints, no contract change.
+Endpoints serve the real ledger + fixtures; the WS stream runs the live WS3
+agent swarm (falls back to the recorded stream so the demo is never dark).
+
+  GET  /api/health  /api/ledger  /api/catalog  /api/rescue/{id}
+  POST /api/returns/intake  /api/rescue/{id}/respond
+  WS   /api/rescue/{id}/stream
+  +    WS6 voice routes (mounted defensively)
 
 Run:  cd keeper/apps/api && uvicorn keeper_api.main:app --reload --port 8000
 """
 from __future__ import annotations
 import asyncio
 import json
+import logging
 
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import CACHE_DIR, FIXTURES_DIR
 
-app = FastAPI(title="Keeper API (mock)", version="0.1.0")
+app = FastAPI(title="Keeper API", version="1.0.0")
 app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"],
 )
@@ -78,14 +83,45 @@ def respond(rescue_id: str, body: dict):
     return {"actions": [], "confirmation": "Refund processed."}
 
 
-@app.websocket("/api/rescue/{rescue_id}/stream")
-async def stream(ws: WebSocket, rescue_id: str):
-    """Replays the recorded StepEvents with lifelike pacing (mock of the agent loop)."""
-    await ws.accept()
+# --- WS6 voice routes (ElevenLabs widget + Twilio call). Defensive: never block
+#     API boot if telephony deps/keys are absent — the module degrades gracefully.
+try:
+    from .voice import router as voice_router
+    app.include_router(voice_router)
+except Exception as _voice_err:  # pragma: no cover
+    logging.getLogger(__name__).warning("voice routes not mounted: %s", _voice_err)
+
+
+async def _replay_recorded(ws: WebSocket) -> None:
+    """Fallback: replay the canonical recording (only if the live loop errors)."""
     for ev in STREAM:
         if ev.get("kind") != "decision" and ev.get("thinking"):
             await ws.send_json({**ev, "status": "thinking"})
             await asyncio.sleep(0.6)
         await ws.send_json({**ev, "status": ev.get("status", "done")})
         await asyncio.sleep(0.5)
+
+
+@app.websocket("/api/rescue/{rescue_id}/stream")
+async def stream(ws: WebSocket, rescue_id: str):
+    """Run the real WS3 agent swarm and stream Contract-C StepEvents.
+
+    Falls back to the recorded stream if the live loop fails, so the demo is
+    never dark (e.g. when FIREWORKS_API_KEY isn't set).
+    """
+    await ws.accept()
+    channel = ws.query_params.get("channel", "voice")
+    try:
+        from .agents import astream_events
+        async for ev in astream_events(rescue_id, channel):
+            await ws.send_json(ev)
+            await asyncio.sleep(0.04 if ev.get("status") == "streaming" else 0.18)
+    except WebSocketDisconnect:
+        return
+    except Exception as err:  # pragma: no cover — keep the demo alive
+        logging.getLogger(__name__).exception("live agent loop failed: %s", err)
+        try:
+            await _replay_recorded(ws)
+        except WebSocketDisconnect:
+            return
     await ws.close()

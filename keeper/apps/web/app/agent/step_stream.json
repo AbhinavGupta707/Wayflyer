@@ -1,0 +1,61 @@
+[
+  {
+    "seq": 1, "agent": "triage", "label": "Triage Agent", "kind": "reasoning", "status": "done",
+    "thinking": "Customer says the Court Trainers came up tight across the toe and wants to size up. Classifying intent and sentiment...",
+    "result": { "reason": "size_too_small", "sentiment": "mild_frustration" },
+    "node_edge": ["intake", "triage"], "latency_ms": 680
+  },
+  {
+    "seq": 2, "agent": "context", "label": "Context Loader", "kind": "compute", "status": "done",
+    "thinking": "Hydrating rescue case — passport, SKU genome, sibling-size stock.",
+    "result": { "customer": "Blessing Nowak", "ltv": 162.5, "sku": "Court Trainer UK7" },
+    "node_edge": ["triage", "context"], "latency_ms": 120
+  },
+  {
+    "seq": 3, "agent": "fit", "label": "Fit Agent", "kind": "reasoning", "status": "done",
+    "thinking": "Court Trainer runs small — 56% of its returns are size_too_small. Customer returned UK7. Ladder step up -> UK8.",
+    "result": { "to_size": "UK8", "confidence": 0.86 },
+    "node_edge": ["context", "fit"], "latency_ms": 540
+  },
+  {
+    "seq": 4, "agent": "inventory", "label": "Inventory Agent", "kind": "compute", "status": "done",
+    "thinking": "Checking point-in-time stock for UK8...",
+    "result": { "size": "UK8", "in_stock": true, "units": 30 },
+    "node_edge": ["fit", "inventory"], "latency_ms": 90
+  },
+  {
+    "seq": 5, "agent": "economics", "label": "Economics Agent", "kind": "compute", "status": "done",
+    "thinking": "Refund loses the GBP 162.50 sale. Exchange keeps it. Margin after COGS (69.88) and swap cost (5.00) = 87.62.",
+    "result": { "refund": -162.5, "exchange_margin": 87.62, "recommended": "exchange" },
+    "node_edge": ["inventory", "economics"], "latency_ms": 110
+  },
+  {
+    "seq": 6, "agent": "governor", "label": "Action Governor", "kind": "compute", "status": "done",
+    "thinking": "Value GBP 162.50 is over the 150 auto-ceiling -> low risk but flag for one-tap approval. Margin floor passed.",
+    "result": { "auto": false, "requires_approval": true },
+    "node_edge": ["economics", "governor"], "latency_ms": 40
+  },
+  {
+    "seq": 7, "agent": "concierge", "label": "Concierge Agent", "kind": "reasoning", "status": "done",
+    "thinking": "Drafting a warm, on-brand offer: ship UK8 today, keep the original price, prepaid label for the 7s.",
+    "result": {
+      "channel": "voice",
+      "message": "Hi Blessing — saw the Court Trainers came up tight. Want me to ship the UK8 out to you today and keep the same price? I'll pop a prepaid label in for the 7s."
+    },
+    "node_edge": ["governor", "concierge"], "latency_ms": 900
+  },
+  {
+    "seq": 8, "kind": "decision", "status": "done",
+    "decision": {
+      "branch": "fit_exchange", "action": "exchange", "to_size": "UK8",
+      "recoverable": true, "recovered_gbp": 162.5, "margin_gbp": 87.62,
+      "rationale": "runs small; swap UK7->UK8, keep the sale", "requires_approval": true
+    },
+    "actions_preview": [
+      { "action_type": "create_exchange", "payload": { "from": "UK7", "to": "UK8" }, "expected_margin_impact": 87.62, "requires_approval": true, "status": "queued", "real": false },
+      { "action_type": "reserve_inventory", "payload": { "variant": "UK8", "qty": 1 }, "expected_margin_impact": 0, "requires_approval": false, "status": "queued", "real": false },
+      { "action_type": "make_voice_call", "payload": { "to": "customer" }, "expected_margin_impact": 0, "requires_approval": false, "status": "queued", "real": true },
+      { "action_type": "flag_to_buying", "payload": { "sku": "Court Trainer", "signal": "runs_small" }, "expected_margin_impact": 0, "requires_approval": false, "status": "queued", "real": true }
+    ]
+  }
+]

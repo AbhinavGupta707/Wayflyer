@@ -1,0 +1,112 @@
+<!doctype html>
+<!--
+  WS6 — standalone voice demo. No build step: open directly or serve with
+      python3 -m http.server 5500   (from keeper/apps/web/components)
+  then visit  http://localhost:5500/voice-demo.html?api=http://localhost:8000&id=rsc_demo_0001
+  It is the stage fallback for the React <VoiceWidget> while the Next app is scaffolded.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pretty Fly — Fit Concierge</title>
+  <style>
+    body{margin:0;background:#070a0f;color:#e8edf2;font-family:ui-sans-serif,system-ui,sans-serif;
+         display:flex;min-height:100vh;align-items:center;justify-content:center}
+    .card{max-width:460px;width:92%;padding:24px;border-radius:18px;background:#0e1116;
+          border:1px solid #1d232c;box-shadow:0 10px 40px rgba(0,0,0,.45)}
+    .kicker{font-size:12px;letter-spacing:.6px;text-transform:uppercase;color:#7aa2ff;margin-bottom:10px}
+    .script{font-size:17px;line-height:1.55;font-style:italic;margin:0 0 12px}
+    .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+    button{padding:12px 16px;border-radius:10px;border:none;font-size:14px;font-weight:600;cursor:pointer}
+    .primary{flex:1;min-width:170px;background:#3b6cff;color:#fff}
+    .ghost{background:transparent;border:1px solid #2a3340;color:#c7d0da;font-weight:500}
+    input{flex:1;min-width:150px;padding:11px 12px;border-radius:10px;border:1px solid #2a3340;
+          background:#0a0d12;color:#e8edf2;font-size:14px}
+    audio{width:100%;margin:10px 0}
+    .status{font-size:13px;color:#9fb2cc;margin-top:8px}
+    details{margin-top:14px} summary{cursor:pointer;color:#9fb2cc}
+  </style>
+</head>
+<body>
+  <div class="card" id="root">Loading the decided offer…</div>
+
+  <script>
+    const qs = new URLSearchParams(location.search);
+    const API = qs.get("api") || "http://localhost:8000";
+    const ID  = qs.get("id")  || "rsc_demo_0001";
+    const root = document.getElementById("root");
+
+    const esc = (s) => (s || "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+    async function start() {
+      const r = await fetch(`${API}/api/rescue/${ID}/voice/start`, {
+        method: "POST", headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({channel: "widget"})
+      });
+      const d = await r.json();
+      render(d.offer, d.agent_id);
+      if (d.agent_id) mountWidget(d.agent_id, d.signed_url, d.dynamic_variables);
+    }
+
+    function render(offer, agentId) {
+      root.innerHTML = `
+        <div class="kicker">Fit concierge · ${esc(offer.customer_name)}</div>
+        <p class="script">“${esc(offer.script)}”</p>
+        <audio controls src="${API}/api/voice/audio/${ID}.mp3"></audio>
+        <div class="row">
+          <button class="primary" id="yes">Yes, ship the ${esc(offer.to_size || "exchange")}</button>
+          <button class="ghost" id="no">No, refund me</button>
+        </div>
+        <div id="widget" style="margin-top:12px"></div>
+        <details>
+          <summary>📞 Call my phone instead</summary>
+          <div class="row"><input id="phone" placeholder="+353 …"/><button class="ghost" id="call">Call me</button></div>
+          <p class="status" id="callstatus"></p>
+        </details>
+        <p class="status" id="confirm"></p>`;
+      document.getElementById("yes").onclick = () => accept(true, offer);
+      document.getElementById("no").onclick  = () => accept(false, offer);
+      document.getElementById("call").onclick = callPhone;
+    }
+
+    async function accept(accepted, offer) {
+      const r = await fetch(`${API}/api/voice/accept`, {
+        method: "POST", headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({rescue_id: ID, accepted})
+      });
+      const d = await r.json();
+      root.innerHTML = `<div class="kicker">${accepted ? "✅ Confirmed" : "Refund"}</div>
+        <p class="script">${esc(d.confirmation || (accepted ? offer.confirm_line : offer.decline_line))}</p>`;
+    }
+
+    async function callPhone() {
+      const el = document.getElementById("callstatus");
+      const phone = document.getElementById("phone").value;
+      el.textContent = "Dialing…";
+      const r = await fetch(`${API}/api/rescue/${ID}/voice/start`, {
+        method: "POST", headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({channel: "phone", to_number: phone || undefined})
+      });
+      const d = await r.json();
+      el.textContent = r.ok ? `Calling ${d.to} — pick up to hear the offer.` : (d.error || "Call failed.");
+    }
+
+    function mountWidget(agentId, signedUrl, vars) {
+      if (!document.querySelector('script[data-convai]')) {
+        const s = document.createElement("script");
+        s.src = "https://unpkg.com/@elevenlabs/convai-widget-embed";
+        s.async = true; s.setAttribute("data-convai", "1");
+        document.body.appendChild(s);
+      }
+      const el = document.createElement("elevenlabs-convai");
+      el.setAttribute("agent-id", agentId);
+      if (signedUrl) el.setAttribute("signed-url", signedUrl);
+      el.setAttribute("dynamic-variables", JSON.stringify(vars || {}));
+      document.getElementById("widget").appendChild(el);
+    }
+
+    start().catch(e => { root.textContent = "Could not reach the voice service at " + API; });
+  </script>
+</body>
+</html>
