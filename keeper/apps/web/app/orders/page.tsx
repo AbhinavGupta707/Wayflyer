@@ -222,11 +222,16 @@ export default function OrdersPage() {
                 ))}
               </div>
 
-              <button onClick={submit} disabled={!selItem || !reason || busy}
-                className="mt-6 w-full rounded-xl bg-char py-3 font-medium text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-40">
-                {busy ? "Finding your best option…" : "✨ Find my best option"}
-              </button>
-              <button onClick={() => setRetOrder(null)} className="mt-2 w-full py-1.5 text-xs text-stone-400 hover:text-stone-600">Cancel</button>
+              <div className="mt-6 grid grid-cols-2 gap-3">
+                <button onClick={() => setRetOrder(null)} disabled={busy}
+                  className="rounded-xl border border-cream-300 bg-white py-3 font-medium text-stone-700 transition hover:bg-cream-50 disabled:opacity-40">
+                  Continue
+                </button>
+                <button onClick={submit} disabled={!selItem || !reason || busy}
+                  className="flex items-center justify-center gap-1.5 rounded-xl bg-char py-3 font-medium text-white transition hover:bg-black disabled:cursor-not-allowed disabled:opacity-40">
+                  {busy ? "Opening…" : <>Agent View <span aria-hidden>→</span></>}
+                </button>
+              </div>
             </motion.div>
           </motion.div>
         )}
