@@ -104,7 +104,7 @@ export default function OpsPage() {
             <BarChart data={skuData} layout="vertical" margin={{ left: 8, right: 16 }}>
               <XAxis type="number" tick={{ fill: "#64748b", fontSize: 11 }} tickFormatter={(v) => `£${Math.round(v / 1000)}k`} />
               <YAxis type="category" dataKey="name" width={92} tick={{ fill: "#94a3b8", fontSize: 12 }} />
-              <Tooltip cursor={{ fill: "rgba(255,255,255,0.04)" }} contentStyle={tooltipStyle} formatter={(v: number) => [gbp(v), "recoverable"]} />
+              <Tooltip cursor={{ fill: "rgba(255,255,255,0.04)" }} contentStyle={tooltipStyle} labelStyle={{ color: "#ffffff", fontWeight: 600 }} itemStyle={{ color: "#e6edf3" }} formatter={(v: number) => [gbp(v), "recoverable"]} />
               <Bar dataKey="gbp" radius={[0, 4, 4, 0]}>
                 {skuData.map((d, i) => (
                   <Cell key={i} fill={/Trainer/.test(d.full) ? MINT : "#475569"} />
@@ -126,7 +126,7 @@ export default function OpsPage() {
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
               <XAxis dataKey="m" tick={{ fill: "#64748b", fontSize: 10 }} interval={1} />
               <YAxis tick={{ fill: "#64748b", fontSize: 11 }} tickFormatter={(v) => `£${Math.round(v / 1000)}k`} />
-              <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => [gbp(v), "recoverable"]} />
+              <Tooltip contentStyle={tooltipStyle} labelStyle={{ color: "#ffffff", fontWeight: 600 }} itemStyle={{ color: "#e6edf3" }} formatter={(v: number) => [gbp(v), "recoverable"]} />
               <Area type="monotone" dataKey="gbp" stroke={MINT} strokeWidth={2} fill="url(#g)" />
             </AreaChart>
           </ResponsiveContainer>

@@ -165,6 +165,10 @@ export function useAgentStream(): AgentStream {
         ...s.console,
         { id: lineId, agent: step.agent, kind: step.kind, text: "", done: false },
       ];
+      // The upstream node of this edge (e.g. "intake") is already complete the
+      // moment its edge fires — mark it visited so it lights up too.
+      const source = step.node_edge?.[0] ?? null;
+      if (source && !s.visited.includes(source)) s.visited = [...s.visited, source];
       s.activeEdge = eid;
       s.activeNode = target;
       s.status = "playing";
