@@ -57,15 +57,23 @@ def _pick_passport(product_type: str) -> dict:
 
 
 def build_rescue_case(
-    product_id: str, size: str, reason: str,
-    *, customer_id: str | None = None, colour: str | None = None,
+    product_id: str | None = None, size: str | None = None, reason: str = "",
+    *, variant_id: str | None = None, customer_id: str | None = None,
+    colour: str | None = None, order_id: str | None = None,
 ) -> dict:
-    """Assemble a Contract-A RescueCase for any selection and run the real engine."""
-    vid = resolve_variant(product_id, size, colour)
+    """Assemble a Contract-A RescueCase and run the real engine.
+
+    Accepts either a concrete `variant_id` (the exact item from a real order) or a
+    `product_id` + `size` (a catalogue pick). With a real `customer_id` it uses that
+    customer's real passport.
+    """
+    vid = variant_id or resolve_variant(product_id or "", size or "", colour)
     if not vid:
         raise ValueError(f"no variant for product {product_id!r} size {size!r}")
 
     v = features.variant(vid)
+    product_id = v["product_id"]
+    size = v["size"]
     g = features.genome(product_id)
     siblings = features.siblings_in_stock(vid)        # live (now)
     refund_value = round(float(v["price"]), 2)
@@ -82,7 +90,7 @@ def build_rescue_case(
     case = {
         "rescue_id": "rsc_" + uuid.uuid4().hex[:8],
         "customer_id": passport["customer_id"],
-        "order_id": "ord_demo",
+        "order_id": order_id or "ord_demo",
         "returned": {
             "variant_id": vid, "product_id": product_id, "title": g["title"],
             "size": size, "price": refund_value, "landed_cost": landed,

@@ -143,3 +143,43 @@ export interface LedgerSummary {
 }
 
 export interface HealthResponse { ok: boolean; fixtures: boolean; stream_steps: number; }
+
+// ===================== Demo storefront (real customers + orders) =====================
+export interface DemoCustomer {
+  customer_id: string;
+  name: string;
+  ltv: number;
+  orders_count: number;
+  segment: string;
+  country: string;
+}
+export interface OrderItem {
+  variant_id: string;
+  product_id: string;
+  title: string;
+  product_type: string;
+  size: string;
+  colour: string;
+  quantity: number;
+  price: number;
+  returned: boolean;
+  return_reason: string | null;
+  runs: "small" | "large" | "none";
+}
+export interface CustomerOrder {
+  order_id: string;
+  order_number: string;
+  created_at: string;
+  total_price: number;
+  items: OrderItem[];
+}
+export interface CustomerOrders {
+  customer_id: string;
+  name: string;
+  email: string;
+  ltv: number;
+  orders_count: number;
+  country: string;
+  segment: string;
+  orders: CustomerOrder[];
+}
