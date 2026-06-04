@@ -203,25 +203,10 @@ export function VoiceWidget({
         </button>
       </div>
 
-      {/* Layer 2: live ElevenLabs conversational widget (if an agent is set). */}
+      {/* Live ElevenLabs conversational widget (if an agent is set) — speaks the
+          offer and listens for the customer's yes/no. */}
       {agentId && <div ref={widgetSlot} style={{ marginTop: 12 }} />}
-
-      {/* Layer 3: real outbound phone call. */}
-      <details style={{ marginTop: 12 }}>
-        <summary style={S.summary}>📞 Call my phone instead</summary>
-        <div style={S.row}>
-          <input
-            style={S.input}
-            placeholder="+353 …"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-          />
-          <button style={S.ghost} onClick={callPhone}>
-            Call me
-          </button>
-        </div>
-        {callStatus && <p style={S.status}>{callStatus}</p>}
-      </details>
+      {callStatus && <p style={S.status}>{callStatus}</p>}
     </div>
   );
 }
