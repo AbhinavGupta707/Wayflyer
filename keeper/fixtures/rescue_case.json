@@ -1,0 +1,100 @@
+{
+  "rescue_id": "rsc_demo_0001",
+  "customer_id": "cust_000081",
+  "order_id": "ord_000092",
+  "returned": {
+    "variant_id": "var_000045",
+    "product_id": "prod_00005",
+    "title": "Court Trainer",
+    "size": "UK7",
+    "price": 195.0,
+    "landed_cost": 69.88
+  },
+  "reason_label": "size_too_small",
+  "reason_text": "These came up really tight across the toe, I think I need to size up.",
+  "passport": {
+    "customer_id": "cust_000081",
+    "name": "Blessing Nowak",
+    "email": "blessing.nowak.81@example-fake.com",
+    "ltv": 162.5,
+    "orders_count": 1,
+    "country": "IE",
+    "segment": "mens",
+    "acquisition": "google/cpc/Shopping_Tees_UK",
+    "discount_sensitivity": 0.0,
+    "sizes_kept": {},
+    "sizes_returned": [
+      {
+        "product_type": "Trainer",
+        "size": "UK7",
+        "reason": "size_too_small"
+      }
+    ],
+    "email_engaged": false,
+    "contactable": true
+  },
+  "genome": {
+    "product_id": "prod_00005",
+    "title": "Court Trainer",
+    "product_type": "Trainer",
+    "size_ladder": [
+      "UK6",
+      "UK7",
+      "UK8",
+      "UK9",
+      "UK10",
+      "UK11",
+      "UK12"
+    ],
+    "units_sold": 1573,
+    "returns": 354,
+    "return_rate": 0.225,
+    "reason_skew": {
+      "size_too_small": 0.562,
+      "size_too_large": 0.438
+    },
+    "runs": "small",
+    "price": 195.0,
+    "landed_cost": 69.88,
+    "margin_per_unit": 125.12,
+    "current_stock_by_size": {
+      "UK6": -41,
+      "UK7": -22,
+      "UK8": 20,
+      "UK9": 27,
+      "UK10": 23,
+      "UK11": -30,
+      "UK12": -32
+    }
+  },
+  "siblings_in_stock": [
+    {
+      "variant_id": "var_000053",
+      "size": "UK8",
+      "stock": 20,
+      "price": 195.0
+    },
+    {
+      "variant_id": "var_000054",
+      "size": "UK9",
+      "stock": 27,
+      "price": 195.0
+    },
+    {
+      "variant_id": "var_000055",
+      "size": "UK10",
+      "stock": 23,
+      "price": 195.0
+    }
+  ],
+  "economics": {
+    "refund_value": 162.5,
+    "recommended": "exchange",
+    "exchange": {
+      "to_size": "UK8",
+      "to_variant": "var_000053",
+      "recovered_gbp": 162.5,
+      "margin_gbp": 87.62
+    }
+  }
+}

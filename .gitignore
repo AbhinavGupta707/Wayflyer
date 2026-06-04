@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+
+# Node / Next
+node_modules/
+.next/
+out/
+dist/
+.turbo/
+
+# Env / secrets
+.env
+.env.local
+.env.*.local
+
+# Generated caches (regenerable via ETL)
+keeper/cache/
+*.parquet
+
+# OS / Windows cruft
+*:Zone.Identifier
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
