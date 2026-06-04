@@ -76,7 +76,7 @@ export function VoiceModal({
               setTimeout(() => {
                 convRef.current?.endSession?.().catch(() => {});
                 onResolved(acc, confirmation, note);
-              }, 3200);
+              }, 4200);
               return acc ? "Exchange confirmed for the customer." : "Refund confirmed.";
             },
           },
@@ -119,15 +119,9 @@ export function VoiceModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="relative mx-auto grid h-28 w-28 place-items-center">
-          {active && (
-            <span className={`absolute inset-0 rounded-full ${mode === "speaking" ? "bg-mint-400/30" : "bg-sky-400/20"} animate-ping`} />
-          )}
-          <div className={`grid h-20 w-20 place-items-center rounded-full transition ${mode === "speaking" ? "bg-mint-500" : "bg-cream-200"}`}>
-            <svg className={`h-8 w-8 ${mode === "speaking" ? "text-white" : "text-stone-500"}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
-              <path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
-              <path d="M19 11a7 7 0 0 1-14 0M12 18v4M8 22h8" strokeLinecap="round" />
-            </svg>
-          </div>
+          {active && <span className="vorb-ring" />}
+          {active && <span className="vorb-ring" style={{ animationDelay: "1.1s" }} />}
+          <div className={`vorb h-20 w-20 ${mode === "speaking" ? "vorb--speaking" : ""}`} />
         </div>
         <h3 className="mt-5 font-serif text-2xl">Fit concierge</h3>
         <p className="mt-1 text-sm text-stone-500">{hint}</p>

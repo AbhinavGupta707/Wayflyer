@@ -98,7 +98,7 @@ def build_offer(rescue_id: str, offer_text: Optional[str] = None) -> VoiceOffer:
     price = float(returned.get("price", econ.get("refund_value", 0.0)) or 0.0)
     recommended = (econ.get("recommended") or "exchange").lower()
 
-    greeting = f"Hi {first}, this is the Pretty Fly fit concierge."
+    greeting = f"Hi {first}, quick one from Pretty Fly."
 
     # 1: caller-supplied prose wins (e.g. the live concierge draft passed to /start).
     #    (We don't reuse the fixture step-stream's concierge line — it's the demo
@@ -109,17 +109,11 @@ def build_offer(rescue_id: str, offer_text: Optional[str] = None) -> VoiceOffer:
         # 3: deterministic fallback that narrates the decided action.
         if recommended == "exchange" and to_size:
             script_body = (
-                f"I saw your {product} in a {from_size} came up a little tight across the toe. "
-                f"Good news — I can ship you the {to_size} today at the same price, "
-                f"and pop a prepaid label in the box for the {from_size}s. "
-                "Would you like me to set that up?"
+                f"Your {product} runs small, so I'll swap your {from_size} for a "
+                f"{to_size} — same price, free returns. Sound good?"
             )
         else:
-            script_body = (
-                f"I saw you started a return on your {product}. "
-                "I can get that refund moving for you right away. "
-                "Shall I go ahead?"
-            )
+            script_body = f"I can get the refund on your {product} moving right away. Shall I go ahead?"
 
     # Avoid double-greeting when the drafted prose already opens with "Hi/Hello/Hey".
     body_lc = script_body.lstrip().lower()
@@ -129,20 +123,10 @@ def build_offer(rescue_id: str, offer_text: Optional[str] = None) -> VoiceOffer:
         script = f"{greeting} {script_body}".strip()
 
     if recommended == "exchange" and to_size:
-        confirm_line = (
-            f"Brilliant. Your {to_size} {product} ships today and a prepaid label "
-            f"is on its way for the {from_size}s. You'll get an email confirmation shortly. "
-            "Thanks, and enjoy the new pair!"
-        )
+        confirm_line = f"Perfect — your {to_size} is on the way and the label's in your email. Thanks!"
     else:
-        confirm_line = (
-            "All done — your refund is on its way and you'll see it in a few days. "
-            "Thanks for shopping with Pretty Fly."
-        )
-    decline_line = (
-        "No problem at all — I'll process the refund as you asked. "
-        "Thanks, and we hope to see you again soon."
-    )
+        confirm_line = "All done — your refund's on its way. Thanks!"
+    decline_line = "No problem — I'll refund you now. Thanks!"
 
     offer = VoiceOffer(
         rescue_id=rescue_id,

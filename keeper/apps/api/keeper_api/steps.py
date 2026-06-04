@@ -122,7 +122,7 @@ def build_step_stream(case: dict) -> list[dict]:
              "expected_margin_impact": d.margin_gbp, "requires_approval": d.requires_approval, "status": "queued", "real": False},
             {"action_type": "reserve_inventory", "payload": {"size": to_size, "qty": 1},
              "expected_margin_impact": 0, "requires_approval": False, "status": "queued", "real": False},
-            {"action_type": "make_voice_call", "payload": {"to": "customer"},
+            {"action_type": "send_message", "payload": {"channel": "email", "to": "customer"},
              "expected_margin_impact": 0, "requires_approval": False, "status": "queued", "real": True},
         ]
         if runs in ("small", "large"):
