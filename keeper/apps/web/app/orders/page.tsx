@@ -54,18 +54,24 @@ export default function OrdersPage() {
     return c;
   }, [orders]);
 
-  // Recommendation from THIS customer's own return history (their fit memory).
-  const fitTip = useMemo(() => {
-    if (!data) return "";
+  // This customer's real return history, by direction.
+  const returnCounts = useMemo(() => {
     let up = 0, down = 0;
-    for (const o of data.orders) for (const it of o.items) {
+    for (const o of data?.orders ?? []) for (const it of o.items) {
       if (it.return_reason === "size_too_small") up++;
       else if (it.return_reason === "size_too_large") down++;
     }
-    if (up > down && up >= 1) return `You've returned ${up} item${up > 1 ? "s" : ""} as "too small" before — we'll lean toward sizing up.`;
-    if (down > up && down >= 1) return `You've returned ${down} item${down > 1 ? "s" : ""} as "too big" before — we'll lean toward sizing down.`;
-    return "";
+    return { up, down };
   }, [data]);
+  // Only show a tip that is TRUTHFUL (real history) AND CONTEXTUAL to the reason
+  // the customer just picked — so it can never contradict their selection.
+  const fitTip = useMemo(() => {
+    if (reason === "size_too_small" && returnCounts.up >= 1)
+      return `You've returned ${returnCounts.up} item${returnCounts.up > 1 ? "s" : ""} as "too small" before — we'll lean toward sizing up.`;
+    if (reason === "size_too_large" && returnCounts.down >= 1)
+      return `You've returned ${returnCounts.down} item${returnCounts.down > 1 ? "s" : ""} as "too big" before — we'll lean toward sizing down.`;
+    return "";
+  }, [reason, returnCounts]);
   const shown = tab === "All" ? orders : orders.filter((o) => o.status === tab);
   const first = data?.name.split(" ")[0] ?? "";
 
@@ -212,12 +218,6 @@ export default function OrdersPage() {
               <h3 className="font-serif text-2xl">Return or replace</h3>
               <p className="text-sm text-stone-500">Order #{retOrder.order_number}</p>
 
-              {fitTip && (
-                <div className="mt-3 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                  <span aria-hidden>🧠</span><span>{fitTip}</span>
-                </div>
-              )}
-
               <div className="mt-4 mb-2 text-xs font-medium uppercase tracking-wider text-stone-400">Which item?</div>
               <div className="space-y-2">
                 {retOrder.items.map((it, i) => (
@@ -240,6 +240,12 @@ export default function OrdersPage() {
                     className={`rounded-lg border px-3 py-1.5 text-sm transition ${reason === r.value ? "border-char bg-char text-white" : "border-cream-300 text-stone-600 hover:bg-cream-50"}`}>{r.label}</button>
                 ))}
               </div>
+
+              {fitTip && (
+                <div className="mt-3 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  <span aria-hidden>🧠</span><span>{fitTip}</span>
+                </div>
+              )}
 
               <div className="mt-6 grid grid-cols-2 gap-3">
                 <button onClick={() => setRetOrder(null)} disabled={busy}
