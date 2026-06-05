@@ -114,6 +114,17 @@ export function VoiceModal({
           },
           onError: () => { if (!cancelled) { setMode("error"); setHint("Voice error — tap to close."); } },
         });
+        // StrictMode (dev) and any rapid remount tear down this effect WHILE the
+        // async startSession above is still connecting. The cleanup ran when
+        // convRef was still null, so it couldn't end this session — leaving it
+        // live in the background. A second mount then starts ANOTHER session, so
+        // the agent speaks every line TWICE. Kill this orphan the instant it
+        // connects if we were already cancelled; only the surviving mount keeps
+        // its session.
+        if (cancelled) {
+          conv.endSession?.().catch(() => {});
+          return;
+        }
         convRef.current = conv;
       } catch (e: unknown) {
         if (!cancelled) {
