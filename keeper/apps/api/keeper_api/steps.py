@@ -110,10 +110,21 @@ def build_step_stream(case: dict) -> list[dict]:
                          + (" and flag this batch to our team." if qa else ".") + " Shall I go ahead?"},
              ["governor", "concierge"], 340)
 
-    if runs in ("small", "large") and reason.startswith("size"):
-        step("learning", "Learning Agent", "reasoning",
-             f"{title} keeps coming back {rl} — flagging the buying team + a size-chart note.",
-             {"flag": "runs_" + runs, "sku": title}, ["concierge", "learning"], 300)
+    # ---- memory: ALWAYS write the outcome back — every return teaches Keeper ----
+    ptype = g.get("product_type") or "this style"
+    if reason.startswith("size") and to_size:
+        mem_think = (
+            f"Writing this outcome to memory — {first} now sizes up to {to_size} on {ptype}, "
+            f"and the {title} picks up another '{rl}' data point for the buying team."
+        )
+        mem_result = {"customer_note": f"{first} → size up on {ptype}", "sku_signal": f"{title} +1 “{rl}”"}
+    else:
+        mem_think = (
+            f"Logging {first}'s '{rl}' return on the {title} to their profile and the SKU's signal — "
+            "every return makes the next decision smarter."
+        )
+        mem_result = {"customer_note": f"{first} → {rl} on {title}", "sku_signal": f"{title} +1 “{rl}”"}
+    step("memory", "Memory Agent", "reasoning", mem_think, mem_result, ["concierge", "memory"], 320)
 
     # ---- terminal decision ----
     if d.action == "exchange":
@@ -141,6 +152,11 @@ def build_step_stream(case: dict) -> list[dict]:
         if reason in ("quality_issue", "damaged_in_transit", "not_as_described"):
             actions.append({"action_type": "draft_supplier_note", "payload": {"sku": title, "reason": reason},
                             "expected_margin_impact": 0, "requires_approval": False, "status": "queued", "real": True})
+
+    # every rescue writes its outcome back to memory — show it as a real action too
+    actions.append({"action_type": "update_memory",
+                    "payload": {"customer": first, "sku": title, "signal": rl},
+                    "expected_margin_impact": 0, "requires_approval": False, "status": "queued", "real": True})
 
     steps.append({"seq": len(steps) + 1, "kind": "decision", "status": "done",
                   "decision": d.as_dict(), "actions_preview": actions})

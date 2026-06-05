@@ -1,10 +1,12 @@
 "use client";
 
-// The "Customer Galaxy" — a fullscreen Obsidian-style constellation of every
+// The "Customer Galaxy" — a fullscreen, draggable 3D constellation of every
 // customer passport Keeper holds (22,440 of them). Each dot is one real customer;
-// hover to read their passport. High-LTV customers burn brighter and cluster the
-// cores. Rendered on a single <canvas> (fillRect per point) so 22k dots stay at
-// 60fps; hover hit-testing uses a coarse spatial grid in CSS pixels.
+// hover to read their passport, drag to orbit the cloud. High-LTV customers burn
+// brighter and cluster the cores. 22k points stay at 60fps on a single <canvas>
+// (additive fillRect per point, seeded layout, brute-force hover over the cached
+// per-frame projection). Crucially, the render loop depends ONLY on `layout` —
+// hover/highlight/rotation live in refs, so moving the mouse never restarts it.
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
@@ -22,11 +24,14 @@ type Galaxy = {
   points: GPoint[];
 };
 
-const HUBS: [number, number][] = [
-  [0.5, 0.46], [0.34, 0.36], [0.66, 0.39], [0.31, 0.63], [0.69, 0.61], [0.5, 0.74], [0.5, 0.27],
+// hub centres in centred 3D space (roughly within a sphere of r≈0.35)
+const HUBS3: [number, number, number][] = [
+  [0, 0, 0.02], [-0.26, -0.14, 0.12], [0.28, -0.1, -0.14],
+  [-0.28, 0.16, -0.06], [0.28, 0.18, 0.12], [0.02, 0.3, -0.04], [0, -0.3, 0.06],
 ];
+const COLORS = ["#b9892b", "#f2b441", "#ffe9b0"]; // tier 0/1/2 (additive gold)
+const IDLE_YAW = 0.0013; // slow auto-spin when idle
 
-// A tiny seeded PRNG so the layout is identical every time the demo runs.
 function mulberry(seed: number) {
   return () => {
     seed |= 0; seed = (seed + 0x6d2b79f5) | 0;
@@ -38,59 +43,58 @@ function mulberry(seed: number) {
 
 interface Layout {
   n: number;
-  xs: Float32Array; ys: Float32Array;
+  xs: Float32Array; ys: Float32Array; zs: Float32Array;
   sz: Float32Array; ph: Float32Array; al: Float32Array;
   tier: Uint8Array;
 }
 
 function buildLayout(points: GPoint[]): Layout {
   const n = points.length;
-  const xs = new Float32Array(n), ys = new Float32Array(n);
+  const xs = new Float32Array(n), ys = new Float32Array(n), zs = new Float32Array(n);
   const sz = new Float32Array(n), ph = new Float32Array(n), al = new Float32Array(n);
   const tier = new Uint8Array(n);
   const rnd = mulberry(1337);
-  const gauss = () => (rnd() + rnd() + rnd() + rnd() - 2) / 2; // ~N(0,~0.5)
+  const g = () => (rnd() + rnd() + rnd() + rnd() - 2) / 2; // ~N(0,~0.5)
 
   const sorted = points.map((p) => p.l).sort((a, b) => a - b);
   const p97 = sorted[Math.floor(n * 0.97)] ?? Infinity;
   const p80 = sorted[Math.floor(n * 0.8)] ?? Infinity;
+  const clamp = (v: number) => Math.max(-0.48, Math.min(0.48, v));
 
   for (let i = 0; i < n; i++) {
     const p = points[i];
-    const h = HUBS[i % HUBS.length];
     const t = p.l >= p97 ? 2 : p.l >= p80 ? 1 : 0;
     tier[i] = t;
-    const spread = t === 2 ? 0.05 : t === 1 ? 0.11 : 0.2;
-    let x = h[0] + gauss() * spread;
-    let y = h[1] + gauss() * spread * 0.86;
-    if (t === 0 && rnd() < 0.16) { // a faint outer halo to fill the frame
-      const a = rnd() * Math.PI * 2, r = 0.3 + rnd() * 0.2;
-      x = 0.5 + Math.cos(a) * r; y = 0.5 + Math.sin(a) * r * 0.78;
+    const h = HUBS3[i % HUBS3.length];
+    const spread = t === 2 ? 0.05 : t === 1 ? 0.1 : 0.17;
+    let x = h[0] + g() * spread, y = h[1] + g() * spread, z = h[2] + g() * spread;
+    if (t === 0 && rnd() < 0.18) { // a spherical outer halo to fill the frame
+      const a = rnd() * Math.PI * 2, b = Math.acos(2 * rnd() - 1), r = 0.4 + rnd() * 0.08;
+      x = Math.sin(b) * Math.cos(a) * r; y = Math.cos(b) * r; z = Math.sin(b) * Math.sin(a) * r;
     }
-    xs[i] = Math.min(0.992, Math.max(0.008, x));
-    ys[i] = Math.min(0.992, Math.max(0.008, y));
-    sz[i] = t === 2 ? 2.6 : t === 1 ? 1.6 : 1.0;
+    xs[i] = clamp(x); ys[i] = clamp(y); zs[i] = clamp(z);
+    sz[i] = t === 2 ? 2.7 : t === 1 ? 1.7 : 1.2;
     ph[i] = rnd() * Math.PI * 2;
-    al[i] = t === 2 ? 0.95 : t === 1 ? 0.72 : 0.3 + rnd() * 0.26;
+    al[i] = t === 2 ? 0.98 : t === 1 ? 0.78 : 0.56; // higher floor → always visible
   }
-  return { n, xs, ys, sz, ph, al, tier };
+  return { n, xs, ys, zs, sz, ph, al, tier };
 }
 
-function fmtGbp(v?: number) {
-  if (v == null) return "—";
-  return "£" + Math.round(v).toLocaleString();
-}
+const fmtGbp = (v?: number) => (v == null ? "—" : "£" + Math.round(v).toLocaleString());
 
 export function CustomerGalaxy({
   onClose, highlightId,
 }: { onClose: () => void; highlightId?: string }) {
   const [data, setData] = useState<Galaxy | null>(null);
   const [err, setErr] = useState(false);
+  const [hoverInfo, setHoverInfo] = useState<{ idx: number; x: number; y: number } | null>(null);
+
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
-  const [hover, setHover] = useState<{ idx: number; x: number; y: number } | null>(null);
+  const hoverIdxRef = useRef(-1);
+  const highlightIdxRef = useRef(-1);
+  const rotRef = useRef({ yaw: 0.5, pitch: -0.12, velYaw: 0, velPitch: 0, dragging: false, lastX: 0, lastY: 0 });
 
-  // fetch the compact projection once
   useEffect(() => {
     let dead = false;
     fetch(`${API_BASE}/api/passports/galaxy`)
@@ -105,15 +109,15 @@ export function CustomerGalaxy({
     if (!data || !highlightId) return -1;
     return data.points.findIndex((p) => p.i === highlightId);
   }, [data, highlightId]);
+  useEffect(() => { highlightIdxRef.current = highlightIdx; }, [highlightIdx]);
 
-  // close on ESC
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  // the render + hit-grid loop
+  // the render loop — depends ONLY on `layout`, so hover/drag never restart it.
   useEffect(() => {
     if (!layout) return;
     const canvas = canvasRef.current, wrap = wrapRef.current;
@@ -121,108 +125,134 @@ export function CustomerGalaxy({
     const ctx = canvas.getContext("2d", { alpha: false });
     if (!ctx) return;
 
-    let raf = 0, cssW = 0, cssH = 0, dpr = 1;
-    // spatial grid (CSS px) for hover hit-testing
-    const CELL = 26;
-    let cols = 0, rows = 0;
-    let grid: number[][] = [];
+    const n = layout.n;
+    const sxCss = new Float32Array(n), syCss = new Float32Array(n), pdepth = new Float32Array(n);
+    let cssW = 1, cssH = 1, dpr = 1, raf = 0;
 
     const rebuild = () => {
       const rect = wrap.getBoundingClientRect();
       cssW = Math.max(1, rect.width); cssH = Math.max(1, rect.height);
       dpr = Math.min(2, window.devicePixelRatio || 1);
-      canvas.width = Math.floor(cssW * dpr);
-      canvas.height = Math.floor(cssH * dpr);
-      canvas.style.width = cssW + "px";
-      canvas.style.height = cssH + "px";
-      cols = Math.ceil(cssW / CELL); rows = Math.ceil(cssH / CELL);
-      grid = Array.from({ length: cols * rows }, () => [] as number[]);
-      for (let i = 0; i < layout.n; i++) {
-        const cx = Math.min(cols - 1, Math.floor(layout.xs[i] * cssW / CELL));
-        const cy = Math.min(rows - 1, Math.floor(layout.ys[i] * cssH / CELL));
-        grid[cy * cols + cx].push(i);
-      }
+      canvas.width = Math.floor(cssW * dpr); canvas.height = Math.floor(cssH * dpr);
+      canvas.style.width = cssW + "px"; canvas.style.height = cssH + "px";
     };
     rebuild();
     const ro = new ResizeObserver(rebuild);
     ro.observe(wrap);
 
-    const hubColors = ["#b8860b", "#fbbf24", "#fde68a"];
+    const { xs, ys, zs, sz, ph, al, tier } = layout;
     const draw = (ts: number) => {
       const W = canvas.width, H = canvas.height;
-      ctx.fillStyle = "#05060a";
-      ctx.fillRect(0, 0, W, H);
-      // faint hub web
-      ctx.lineWidth = 1; ctx.strokeStyle = "rgba(251,191,36,0.06)";
-      ctx.beginPath();
-      for (let a = 0; a < HUBS.length; a++) for (let b = a + 1; b < HUBS.length; b++) {
-        const dx = HUBS[a][0] - HUBS[b][0], dy = HUBS[a][1] - HUBS[b][1];
-        if (dx * dx + dy * dy < 0.09) {
-          ctx.moveTo(HUBS[a][0] * W, HUBS[a][1] * H);
-          ctx.lineTo(HUBS[b][0] * W, HUBS[b][1] * H);
-        }
-      }
-      ctx.stroke();
+      ctx.globalCompositeOperation = "source-over";
+      ctx.fillStyle = "#06070d"; ctx.fillRect(0, 0, W, H);
+      const glow = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(W, H) * 0.5);
+      glow.addColorStop(0, "rgba(251,191,36,0.07)"); glow.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
 
+      // rotation: drag drives it; otherwise inertia decays into a slow idle spin
+      const r = rotRef.current;
+      if (!r.dragging) {
+        r.yaw += Math.abs(r.velYaw) > 0.0008 ? r.velYaw : IDLE_YAW;
+        r.velYaw *= 0.94;
+        r.pitch += r.velPitch; r.velPitch *= 0.9;
+      }
+      r.pitch = Math.max(-0.65, Math.min(0.65, r.pitch));
+      const cy = Math.cos(r.yaw), sy = Math.sin(r.yaw), cp = Math.cos(r.pitch), sp = Math.sin(r.pitch);
+
+      const cxv = W / 2, cyv = H / 2, scaleBase = Math.min(W, H) * 0.92, focal = 1.9;
       const time = ts * 0.001;
-      const { n, xs, ys, sz, ph, al, tier } = layout;
+
+      ctx.globalCompositeOperation = "lighter";
       for (let i = 0; i < n; i++) {
-        const tw = 0.62 + 0.38 * Math.sin(time * 1.4 + ph[i]);
-        ctx.globalAlpha = al[i] * tw;
-        ctx.fillStyle = hubColors[tier[i]];
-        const s = sz[i] * dpr;
-        ctx.fillRect(xs[i] * W - s / 2, ys[i] * H - s / 2, s, s);
+        const x = xs[i], y = ys[i], z = zs[i];
+        const x1 = x * cy + z * sy;
+        const z1 = -x * sy + z * cy;
+        const y2 = y * cp - z1 * sp;
+        const z2 = y * sp + z1 * cp;
+        const persp = focal / (focal - z2);     // toward camera → larger
+        const px = cxv + x1 * scaleBase * persp;
+        const py = cyv + y2 * scaleBase * persp;
+        sxCss[i] = px / dpr; syCss[i] = py / dpr; pdepth[i] = persp;
+        const tw = 0.82 + 0.18 * Math.sin(time * 1.3 + ph[i]);
+        const depthA = 0.45 + 0.55 * Math.min(1, Math.max(0, (persp - 0.76) / 0.7));
+        ctx.globalAlpha = Math.min(1, al[i] * tw * depthA);
+        ctx.fillStyle = COLORS[tier[i]];
+        const s = sz[i] * persp * dpr;
+        ctx.fillRect(px - s / 2, py - s / 2, s, s);
       }
       ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = "source-over";
 
-      // active customer — a pulsing ring + glow
-      if (highlightIdx >= 0) {
-        const x = xs[highlightIdx] * W, y = ys[highlightIdx] * H;
-        const pr = (8 + 3 * Math.sin(time * 2.4)) * dpr;
+      // active customer — pulsing mint ring
+      const hi = highlightIdxRef.current;
+      if (hi >= 0) {
+        const x = sxCss[hi] * dpr, y = syCss[hi] * dpr, pr = (8 + 3 * Math.sin(time * 2.4)) * dpr;
         ctx.beginPath(); ctx.arc(x, y, pr, 0, Math.PI * 2);
-        ctx.strokeStyle = "rgba(52,211,153,0.9)"; ctx.lineWidth = 1.5 * dpr; ctx.stroke();
-        ctx.fillStyle = "#34d399"; ctx.beginPath(); ctx.arc(x, y, 2.2 * dpr, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = "rgba(52,211,153,0.95)"; ctx.lineWidth = 1.6 * dpr; ctx.stroke();
+        ctx.fillStyle = "#34d399"; ctx.beginPath(); ctx.arc(x, y, 2.4 * dpr, 0, Math.PI * 2); ctx.fill();
       }
-      // hovered ring
-      if (hover && hover.idx >= 0) {
-        const x = xs[hover.idx] * W, y = ys[hover.idx] * H;
-        ctx.beginPath(); ctx.arc(x, y, 6 * dpr, 0, Math.PI * 2);
-        ctx.strokeStyle = "rgba(253,230,138,0.95)"; ctx.lineWidth = 1.4 * dpr; ctx.stroke();
+      const hv = hoverIdxRef.current;
+      if (hv >= 0) {
+        const x = sxCss[hv] * dpr, y = syCss[hv] * dpr;
+        ctx.beginPath(); ctx.arc(x, y, 6.5 * dpr, 0, Math.PI * 2);
+        ctx.strokeStyle = "rgba(253,230,138,0.95)"; ctx.lineWidth = 1.5 * dpr; ctx.stroke();
       }
       raf = requestAnimationFrame(draw);
     };
     raf = requestAnimationFrame(draw);
 
-    const onMove = (e: MouseEvent) => {
-      const rect = wrap.getBoundingClientRect();
-      const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-      const cx = Math.floor(mx / CELL), cy = Math.floor(my / CELL);
-      let best = -1, bestD = 14 * 14;
-      for (let gy = cy - 1; gy <= cy + 1; gy++) {
-        for (let gx = cx - 1; gx <= cx + 1; gx++) {
-          if (gx < 0 || gy < 0 || gx >= cols || gy >= rows) continue;
-          for (const idx of grid[gy * cols + gx]) {
-            const dx = layout.xs[idx] * cssW - mx, dy = layout.ys[idx] * cssH - my;
-            const d = dx * dx + dy * dy;
-            if (d < bestD) { bestD = d; best = idx; }
-          }
-        }
+    // ---- interaction ----
+    let prevBest = -1;
+    const pickHover = (mx: number, my: number) => {
+      let best = -1, bestDepth = -1;
+      for (let i = 0; i < n; i++) {
+        const dx = sxCss[i] - mx, dy = syCss[i] - my;
+        if (dx * dx + dy * dy < 196 && pdepth[i] > bestDepth) { best = i; bestDepth = pdepth[i]; }
       }
-      setHover(best >= 0 ? { idx: best, x: mx, y: my } : null);
+      hoverIdxRef.current = best;
+      if (best >= 0) setHoverInfo({ idx: best, x: mx, y: my });
+      else if (prevBest >= 0) setHoverInfo(null);
+      prevBest = best;
     };
-    const onLeave = () => setHover(null);
-    wrap.addEventListener("mousemove", onMove);
-    wrap.addEventListener("mouseleave", onLeave);
+    const onDown = (e: PointerEvent) => {
+      const r = rotRef.current;
+      r.dragging = true; r.lastX = e.clientX; r.lastY = e.clientY; r.velYaw = 0; r.velPitch = 0;
+      wrap.style.cursor = "grabbing";
+      hoverIdxRef.current = -1; if (prevBest >= 0) { setHoverInfo(null); prevBest = -1; }
+      try { wrap.setPointerCapture(e.pointerId); } catch { /* noop */ }
+    };
+    const onMove = (e: PointerEvent) => {
+      const rect = wrap.getBoundingClientRect();
+      const r = rotRef.current;
+      if (r.dragging) {
+        const dx = e.clientX - r.lastX, dy = e.clientY - r.lastY;
+        r.lastX = e.clientX; r.lastY = e.clientY;
+        r.yaw += dx * 0.005; r.pitch += dy * 0.005;
+        r.velYaw = dx * 0.005; r.velPitch = dy * 0.005;
+        return;
+      }
+      pickHover(e.clientX - rect.left, e.clientY - rect.top);
+    };
+    const onUp = () => { rotRef.current.dragging = false; wrap.style.cursor = "grab"; };
+    const onLeave = () => { if (!rotRef.current.dragging) { hoverIdxRef.current = -1; if (prevBest >= 0) { setHoverInfo(null); prevBest = -1; } } };
+
+    wrap.style.cursor = "grab";
+    wrap.addEventListener("pointerdown", onDown);
+    wrap.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    wrap.addEventListener("pointerleave", onLeave);
 
     return () => {
       cancelAnimationFrame(raf);
       ro.disconnect();
-      wrap.removeEventListener("mousemove", onMove);
-      wrap.removeEventListener("mouseleave", onLeave);
+      wrap.removeEventListener("pointerdown", onDown);
+      wrap.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      wrap.removeEventListener("pointerleave", onLeave);
     };
-  }, [layout, hover, highlightIdx]);
+  }, [layout]);
 
-  const hp = hover && data ? data.points[hover.idx] : null;
+  const hp = hoverInfo && data ? data.points[hoverInfo.idx] : null;
   const st = data?.stats;
 
   return (
@@ -234,11 +264,10 @@ export function CustomerGalaxy({
       <motion.div
         initial={{ scale: 0.985, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.985, opacity: 0 }}
         transition={{ type: "spring", stiffness: 240, damping: 26 }}
-        className="absolute inset-3 overflow-hidden rounded-2xl border border-amber-500/15 bg-[#05060a] md:inset-6"
+        className="absolute inset-3 overflow-hidden rounded-2xl border border-amber-500/15 bg-[#06070d] md:inset-6"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* canvas field */}
-        <div ref={wrapRef} className="absolute inset-0 cursor-crosshair">
+        <div ref={wrapRef} className="absolute inset-0 touch-none select-none">
           <canvas ref={canvasRef} className="block h-full w-full" />
         </div>
 
@@ -250,7 +279,7 @@ export function CustomerGalaxy({
               <span className="text-sm font-medium uppercase tracking-[0.28em]">Customer Memory</span>
             </div>
             <p className="mt-1 text-xs text-amber-100/40">
-              Every dot is one real customer passport — hover to read it.
+              Every dot is one real customer passport · hover to read · drag to orbit
             </p>
           </div>
           <button
@@ -261,7 +290,7 @@ export function CustomerGalaxy({
           </button>
         </div>
 
-        {/* left stats panel */}
+        {/* stats panel */}
         <div className="pointer-events-none absolute left-6 top-1/2 w-[230px] -translate-y-1/2 rounded-2xl border border-amber-400/15 bg-black/40 p-5 backdrop-blur-md">
           <div className="text-[11px] uppercase tracking-[0.18em] text-amber-200/55">Total customers</div>
           <div className="mt-1 text-4xl font-semibold tabular-nums text-amber-200">
@@ -281,11 +310,8 @@ export function CustomerGalaxy({
           )}
         </div>
 
-        {/* loading / error */}
         {!data && !err && (
-          <div className="absolute inset-0 grid place-items-center text-amber-200/50">
-            Loading {`{`}22,440{`}`} passports…
-          </div>
+          <div className="absolute inset-0 grid place-items-center text-amber-200/50">Loading 22,440 passports…</div>
         )}
         {err && (
           <div className="absolute inset-0 grid place-items-center text-amber-300/70">
@@ -294,12 +320,12 @@ export function CustomerGalaxy({
         )}
 
         {/* hover passport card */}
-        {hp && hover && (
+        {hp && hoverInfo && (
           <div
             className="pointer-events-none absolute z-10 w-[210px] rounded-xl border border-amber-400/25 bg-black/80 p-3.5 text-xs shadow-2xl backdrop-blur-md"
             style={{
-              left: Math.min(hover.x + 16, (wrapRef.current?.clientWidth ?? 0) - 226),
-              top: Math.min(hover.y + 16, (wrapRef.current?.clientHeight ?? 0) - 150),
+              left: Math.min(hoverInfo.x + 16, (wrapRef.current?.clientWidth ?? 0) - 226),
+              top: Math.min(hoverInfo.y + 16, (wrapRef.current?.clientHeight ?? 0) - 150),
             }}
           >
             <div className="text-sm font-semibold text-amber-100">{hp.n}</div>
