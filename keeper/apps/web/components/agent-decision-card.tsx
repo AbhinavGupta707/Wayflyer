@@ -22,6 +22,7 @@ const ACTION_LABELS: Record<string, { label: string; icon: string }> = {
   publish_size_chart_patch: { label: "Patch size chart", icon: "📏" },
   flag_to_buying: { label: "Flag to buying", icon: "🚩" },
   draft_supplier_note: { label: "Draft supplier note", icon: "📝" },
+  update_memory: { label: "Update memory", icon: "🧠" },
 };
 
 function payloadLine(a: ActionObject): string {

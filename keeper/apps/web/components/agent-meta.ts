@@ -20,6 +20,7 @@ export const NODE_ORDER = [
   "economics",
   "governor",
   "concierge",
+  "memory",
 ] as const;
 
 export type NodeId = (typeof NODE_ORDER)[number];
@@ -33,6 +34,7 @@ export const AGENT_META: Record<string, AgentMeta> = {
   economics: { id: "economics", label: "Economics", icon: "💷", accent: "#fbbf24" },
   governor: { id: "governor", label: "Governor", icon: "🛡️", accent: "#f59e0b" },
   concierge: { id: "concierge", label: "Concierge", icon: "💬", accent: "#f472b6" },
+  memory: { id: "memory", label: "Memory", icon: "🧠", accent: "#a78bfa" },
 };
 
 const FALLBACK: AgentMeta = { id: "agent", label: "Agent", icon: "✦", accent: "#34d399" };

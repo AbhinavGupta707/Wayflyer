@@ -90,10 +90,14 @@ export function VoiceModal({
                 /* ignore */
               }
               resultRef.current = { accepted: acc, confirmation, note };
-              // The agent should end the call itself after confirming (onDisconnect
-              // fires doFinish). This timer is only a fallback if it doesn't.
-              setTimeout(doFinish, 6000);
-              return acc ? "Exchange confirmed for the customer." : "Refund confirmed.";
+              // Return an EMPTY tool result on purpose. If we hand the model a
+              // sentence here, it narrates it as a SECOND confirmation — then
+              // end_call chops that duplicate off mid-word (the bug we saw). The
+              // agent speaks its single line from the prompt, then calls end_call
+              // (onDisconnect → doFinish). The timer is only a fallback if end_call
+              // never arrives, padded so it can't cut a legitimate one-line reply.
+              setTimeout(doFinish, 9000);
+              return "";
             },
           },
           onConnect: () => { if (!cancelled) { setMode("listening"); setHint("Listening…"); } },
