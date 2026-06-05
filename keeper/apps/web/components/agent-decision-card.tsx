@@ -25,6 +25,9 @@ const ACTION_LABELS: Record<string, { label: string; icon: string }> = {
   update_memory: { label: "Update memory", icon: "🧠" },
 };
 
+// Action types intentionally hidden from the queued-actions list in this view.
+const HIDDEN_ACTION_TYPES = new Set(["make_voice_call", "flag_to_buying"]);
+
 function payloadLine(a: ActionObject): string {
   const p = a.payload ?? {};
   const bits = Object.entries(p).map(([k, v]) => `${k}: ${String(v)}`);
@@ -84,13 +87,16 @@ export function AgentDecisionCard({
 }) {
   const d = event.decision;
   const isExchange = d.action === "exchange";
+  const visibleActions = event.actions_preview.filter(
+    (a) => !HIDDEN_ACTION_TYPES.has(a.action_type),
+  );
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 30, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ type: "spring", stiffness: 220, damping: 26 }}
-      className="relative overflow-hidden rounded-2xl border border-mint-500/30 bg-ink-800/85 p-5 backdrop-blur-xl"
+      className="relative shrink-0 overflow-hidden rounded-2xl border border-mint-500/30 bg-ink-800/85 p-5 backdrop-blur-xl"
       style={{ boxShadow: "0 0 0 1px rgba(16,185,129,0.18), 0 24px 60px -24px rgba(16,185,129,0.45)" }}
     >
       {/* sheen sweep */}
@@ -161,10 +167,10 @@ export function AgentDecisionCard({
       {/* actions */}
       <div className="mt-4">
         <span className="text-[10px] uppercase tracking-wider text-white/35">
-          Actions queued ({event.actions_preview.length})
+          Actions queued ({visibleActions.length})
         </span>
         <ul className="mt-2 space-y-1.5">
-          {event.actions_preview.map((a, i) => (
+          {visibleActions.map((a, i) => (
             <ActionRow key={`${a.action_type}-${i}`} action={a} />
           ))}
         </ul>

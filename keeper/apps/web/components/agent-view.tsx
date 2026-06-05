@@ -175,13 +175,13 @@ export function AgentView({
       </header>
 
       {/* ---- main: timeline | swarm | decision ---- */}
-      <main className="relative z-10 grid min-h-0 flex-1 grid-cols-1 gap-3 px-4 py-3 lg:grid-cols-[minmax(390px,1.1fr)_minmax(320px,1fr)_minmax(360px,400px)]">
+      <main className="relative z-10 grid min-h-0 flex-1 grid-cols-1 gap-3 px-4 py-3 lg:grid-cols-[minmax(390px,1.1fr)_minmax(320px,1fr)_minmax(360px,400px)] lg:grid-rows-[1fr]">
         {/* left: step timeline */}
         <section className="flex min-h-0 flex-col">
           <h2 className="mb-2 px-1 text-[10px] uppercase tracking-widest text-white/30">
             Reasoning steps
           </h2>
-          <div className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto pr-1">
+          <div className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-y-auto pr-1 pb-4">
             <AnimatePresence initial={false}>
               {state.steps.map((step) => (
                 <AgentStepCard
@@ -211,7 +211,7 @@ export function AgentView({
         </section>
 
         {/* right: decision */}
-        <section className="flex min-h-0 flex-col overflow-y-auto">
+        <section className="flex min-h-0 flex-col overflow-y-auto pb-4 pr-1">
           <h2 className="mb-2 px-1 text-[10px] uppercase tracking-widest text-white/30">
             Decision
           </h2>

@@ -42,13 +42,13 @@ export function AgentStepCard({ step, active }: { step: RenderStep; active: bool
 
   return (
     <motion.div
-      layout
+      layout="position"
       initial={{ opacity: 0, x: -14, filter: "blur(4px)" }}
       animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
       transition={{ duration: 0.32, ease: "easeOut" }}
       className={cn(
-        "relative overflow-hidden rounded-xl border bg-ink-800/70 backdrop-blur-md",
-        "border-white/5 px-3.5 py-3 shadow-[0_2px_18px_-10px_rgba(0,0,0,0.9)]",
+        "relative shrink-0 overflow-hidden rounded-xl border bg-ink-800/70 backdrop-blur-md",
+        "border-white/5 px-3.5 py-3.5 shadow-[0_2px_18px_-10px_rgba(0,0,0,0.9)]",
         active && "border-white/15",
       )}
       style={
@@ -113,7 +113,7 @@ export function AgentStepCard({ step, active }: { step: RenderStep; active: bool
           <motion.p
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="text-[12px] leading-snug text-white/55"
+            className="break-words text-[12px] leading-relaxed text-white/55"
           >
             <span className="text-white/40">→ </span>
             <span className="font-mono text-[11.5px] text-white/70">
