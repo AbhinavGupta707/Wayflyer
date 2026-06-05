@@ -28,3 +28,9 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Personal reference / planning notes (kept local, not on GitHub)
+/analysis.md
+/Loomi analysis.md
+/DEMO_SCRIPT.md
+/five_finalist_action_oriented_hackathon_ideas.md
